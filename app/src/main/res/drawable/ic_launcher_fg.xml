@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- strap: a diagonal leather band -->
+    <path
+        android:fillColor="#1B1A17"
+        android:pathData="M22,86 L86,22 L92,28 L28,92 Z" />
+    <path
+        android:fillColor="#1B1A17"
+        android:pathData="M18,62 L62,18 L66,22 L22,66 Z" />
+    <!-- the bayit: a black box with a bronze base -->
+    <path
+        android:fillColor="#8A6A3C"
+        android:pathData="M34,34 L74,34 L78,78 L30,78 Z" />
+    <path
+        android:fillColor="#1B1A17"
+        android:pathData="M36,30 L72,30 L72,66 L36,66 Z" />
+    <path
+        android:fillColor="#2E2C27"
+        android:pathData="M36,30 L72,30 L72,44 L36,44 Z" />
+</vector>

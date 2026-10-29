@@ -1,0 +1,9 @@
+build/
+.gradle/
+.idea/
+*.iml
+local.properties
+.kotlin/
+app/release.p12
+keystore/
+*.apk

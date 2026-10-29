@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">הנחתי</string>
+    <string name="accessibility_description">הנחתי משתמשת בשירות הזה רק כדי לדעת איזו אפליקציה פתוחה עכשיו, ולחסום אותה עד שמניחים תפילין. השירות לא קורא תוכן מהמסך ולא שומר כלום.</string>
+</resources>
