@@ -47,16 +47,15 @@ import androidx.core.content.ContextCompat
 import app.henachti.data.Prefs
 import app.henachti.domain.Cities
 import app.henachti.domain.DayPolicy
+import app.henachti.domain.IsraelTime
 import app.henachti.domain.LockState
 import app.henachti.domain.UnlockReason
 import app.henachti.service.BlockerService
+import app.henachti.service.Guard
 import app.henachti.verify.TefillinVerifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /** Status, first-time setup and settings. Settings are editable only while the day is unlocked. */
 class MainActivity : ComponentActivity() {
@@ -68,7 +67,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs.get(this)
-        policy = DayPolicy(prefs)
+        policy = DayPolicy(this)
         setContent {
             HenachtiTheme { MainScreen() }
         }
@@ -77,19 +76,18 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         BlockerService.ensureRunning(this)
+        BlockerService.instance?.refreshAllowlist()
         tick.longValue = System.currentTimeMillis()
     }
 
-    private fun usageGranted(): Boolean = BlockerService.hasUsageAccess(this)
-
-    private fun overlayGranted(): Boolean = BlockerService.canDrawOverlays(this)
+    private fun bump() {
+        tick.longValue = System.currentTimeMillis()
+    }
 
     private fun notificationsGranted(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
-
-    private fun serviceRunning(): Boolean = BlockerService.instance != null
 
     private fun cameraGranted(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
@@ -98,12 +96,10 @@ class MainActivity : ComponentActivity() {
     private fun batteryExempt(): Boolean =
         (getSystemService(POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
 
-    private fun clock(millis: Long): String =
-        SimpleDateFormat("HH:mm", Locale.US).format(Date(millis))
-
     private fun statusTitle(state: LockState): String = when (state) {
         is LockState.Locked -> "נעול עד שמניחים."
         is LockState.Snoozed -> "דחייה פעילה."
+        is LockState.Tampered -> TamperUi.title(state.reason)
         is LockState.Unlocked -> when (state.reason) {
             UnlockReason.SETUP_INCOMPLETE -> "עוד לא מופעל."
             UnlockReason.NO_TEFILLIN_DAY -> "היום לא מניחים."
@@ -117,10 +113,11 @@ class MainActivity : ComponentActivity() {
         is LockState.Locked ->
             if (state.snoozeAvailable) "הטלפון חסום. נשארה חצי שעה אחת של דחייה להיום."
             else "הטלפון חסום. הדחייה של היום כבר נוצלה."
-        is LockState.Snoozed -> "הכול פתוח עד ${clock(state.until)}, ואז נסגר שוב."
+        is LockState.Snoozed -> "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז נסגר שוב."
+        is LockState.Tampered -> TamperUi.body(state.reason)
         is LockState.Unlocked -> when (state.reason) {
             UnlockReason.SETUP_INCOMPLETE ->
-                "השלם את ההגדרה הראשונית למטה. החסימה מתחילה ברגע שיש מפתח API ושתי ההרשאות המיוחדות ניתנו."
+                "השלם את ההגדרה הראשונית למטה. שמירת מפתח ה-API היא מה שמפעיל את החסימה."
             UnlockReason.NO_TEFILLIN_DAY ->
                 "${policy.noTefillinReason(state.day) ?: ""}. הטלפון פתוח."
             UnlockReason.VERIFIED -> "הטלפון פתוח עד משיכיר של מחר."
@@ -135,6 +132,7 @@ class MainActivity : ComponentActivity() {
         val state = remember(now) { policy.state(now) }
         val day = state.day
         val editable = state is LockState.Unlocked
+        val armed = prefs.setupDone
         val scope = rememberCoroutineScope()
 
         var apiKey by remember { mutableStateOf(prefs.apiKey) }
@@ -144,21 +142,25 @@ class MainActivity : ComponentActivity() {
         var chol by remember { mutableStateOf(prefs.cholHamoedTefillin) }
         var strict by remember { mutableStateOf(prefs.strictAfterSunset) }
         var extra by remember { mutableStateOf(prefs.extraAllowed) }
+        var exitAt by remember(now) { mutableLongStateOf(prefs.exitRequestedAt) }
 
-        val usageOn = remember(now) { usageGranted() }
-        val overlayOn = remember(now) { overlayGranted() }
+        val usageOn = remember(now) { Guard.hasUsageAccess(this) }
+        val overlayOn = remember(now) { Guard.canDrawOverlays(this) }
+        val adminOn = remember(now) { Guard.isAdminActive(this) }
         val notifOn = remember(now) { notificationsGranted() }
-        val running = remember(now) { serviceRunning() }
+        val running = remember(now) { BlockerService.instance != null }
         val cameraOn = remember(now) { cameraGranted() }
         val batteryOk = remember(now) { batteryExempt() }
-        val keyEditable = editable || prefs.lastAuthError
+        val adbOn = remember(now) { Guard.adbEnabled(this) }
+        val readyToArm = usageOn && overlayOn && adminOn
+        val keyEditable = (editable || prefs.lastAuthError) && (readyToArm || armed)
 
         val cameraPermission = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
-        ) { tick.longValue = System.currentTimeMillis() }
+        ) { bump() }
         val notificationPermission = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
-        ) { tick.longValue = System.currentTimeMillis() }
+        ) { bump() }
 
         Column(
             Modifier
@@ -176,46 +178,54 @@ class MainActivity : ComponentActivity() {
             Hairline()
             Spacer(Modifier.height(20.dp))
 
+            // ---- status ----
             Eyebrow("מצב עכשיו")
             Spacer(Modifier.height(6.dp))
             Text(statusTitle(state), style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(6.dp))
             Text(statusBody(state), style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft)
-            if (prefs.setupDone && !running) {
-                Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(16.dp))
+            if (state is LockState.Tampered) {
+                InkButton(
+                    text = TamperUi.action(state.reason),
+                    onClick = { TamperUi.launchFix(this@MainActivity, state.reason) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                InkButton(
+                    text = "אימות במצלמה",
+                    onClick = { startActivity(Intent(this@MainActivity, VerifyActivity::class.java)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = armed && cameraOn,
+                )
+            }
+            if (armed && !running && state !is LockState.Tampered) {
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    if (usageOn && overlayOn) "שירות החסימה לא רץ כרגע. פתח את האפליקציה שוב או לחץ למטה."
-                    else "חסרות הרשאות, אז בפועל שום דבר לא חסום. ראה הגדרה ראשונית.",
+                    "שירות החסימה לא רץ כרגע.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Palette.Danger,
                 )
-                if (usageOn && overlayOn) {
-                    Spacer(Modifier.height(8.dp))
-                    GhostButton("הפעל את השירות", {
-                        BlockerService.ensureRunning(this@MainActivity)
-                        tick.longValue = System.currentTimeMillis()
-                    }, Modifier.fillMaxWidth())
-                }
+                Spacer(Modifier.height(8.dp))
+                GhostButton("הפעל את השירות", {
+                    BlockerService.ensureRunning(this@MainActivity)
+                    bump()
+                }, Modifier.fillMaxWidth())
             }
-            Spacer(Modifier.height(16.dp))
-            InkButton(
-                text = "אימות במצלמה",
-                onClick = { startActivity(Intent(this@MainActivity, VerifyActivity::class.java)) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = prefs.setupDone && cameraOn,
-            )
 
             Spacer(Modifier.height(28.dp))
             Hairline()
             Spacer(Modifier.height(20.dp))
 
+            // ---- setup ----
             Eyebrow("הגדרה ראשונית")
             Spacer(Modifier.height(10.dp))
+
             SetupRow(
                 done = usageOn,
                 title = "גישה לנתוני שימוש",
                 body = "כך האפליקציה יודעת איזו אפליקציה פתוחה עכשיו. ברשימה שתיפתח, מצא את \"הנחתי\" והפעל.",
-                action = "פתח הגדרות גישה לשימוש",
+                action = "פתח גישה לנתוני שימוש",
             ) {
                 runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
             }
@@ -223,7 +233,7 @@ class MainActivity : ComponentActivity() {
             SetupRow(
                 done = overlayOn,
                 title = "הצגה מעל אפליקציות אחרות",
-                body = "כך מסך הנעילה יכול לקפוץ מעל האפליקציה שנפתחה.",
+                body = "כך מסך הנעילה קופץ מעל האפליקציה שנפתחה.",
                 action = "אשר הצגה מעל אפליקציות",
             ) {
                 runCatching {
@@ -234,6 +244,16 @@ class MainActivity : ComponentActivity() {
                         )
                     )
                 }
+            }
+
+            SetupRow(
+                done = adminOn,
+                title = "הגנה מפני הסרה",
+                body = "בלי זה אפשר למחוק את האפליקציה בלחיצה ארוכה. ההפעלה דורשת אישור במסך מערכת. " +
+                    "הסרה מסודרת אפשרית מתוך האפליקציה, אחרי 48 שעות.",
+                action = "הפעל הגנה",
+            ) {
+                runCatching { startActivity(Guard.addAdminIntent(this@MainActivity)) }
             }
 
             SetupRow(
@@ -260,14 +280,17 @@ class MainActivity : ComponentActivity() {
                 body = "בלי אופטימיזציית סוללה השירות לא נרדם באמצע היום.",
                 action = "בטל אופטימיזציה",
             ) {
-                startActivity(
-                    Intent(
-                        Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                        Uri.parse("package:$packageName")
+                runCatching {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                            Uri.parse("package:$packageName")
+                        )
                     )
-                )
+                }
             }
 
+            // ---- API key (arms the lock) ----
             Spacer(Modifier.height(14.dp))
             Text("מפתח API של Anthropic", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
@@ -277,6 +300,14 @@ class MainActivity : ComponentActivity() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )
+            if (!readyToArm && !armed) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "קודם שלוש ההרשאות הראשונות למעלה, ואז המפתח.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Palette.Bronze,
+                )
+            }
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(
                 value = apiKey,
@@ -303,9 +334,9 @@ class MainActivity : ComponentActivity() {
                         if (problem == null) {
                             prefs.apiKey = candidate
                             prefs.lastAuthError = false
-                            keyStatus = "המפתח עובד ונשמר."
+                            keyStatus = "המפתח עובד ונשמר. החסימה פעילה."
                             BlockerService.ensureRunning(this@MainActivity)
-                            tick.longValue = System.currentTimeMillis()
+                            bump()
                         } else {
                             keyStatus = problem
                         }
@@ -333,6 +364,7 @@ class MainActivity : ComponentActivity() {
             Hairline()
             Spacer(Modifier.height(20.dp))
 
+            // ---- settings ----
             Eyebrow("הגדרות")
             Spacer(Modifier.height(10.dp))
             Text("עיר, לזמני משיכיר ושקיעה", style = MaterialTheme.typography.titleMedium)
@@ -346,7 +378,7 @@ class MainActivity : ComponentActivity() {
                         onClick = {
                             city = index
                             prefs.cityIndex = index
-                            tick.longValue = System.currentTimeMillis()
+                            bump()
                         },
                         enabled = editable,
                     ) {
@@ -368,7 +400,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 chol = it
                 prefs.cholHamoedTefillin = it
-                tick.longValue = System.currentTimeMillis()
+                bump()
             }
             SwitchRow(
                 title = "נשאר נעול גם אחרי השקיעה",
@@ -378,14 +410,15 @@ class MainActivity : ComponentActivity() {
             ) {
                 strict = it
                 prefs.strictAfterSunset = it
-                tick.longValue = System.currentTimeMillis()
+                bump()
             }
 
             Spacer(Modifier.height(14.dp))
             Text("אפליקציות שמותרות תמיד", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "שם חבילה בכל שורה. טלפון, מסך הבית, מקלדת ושעון מעורר מותרים תמיד גם בלי זה.",
+                "שם חבילה בכל שורה. טלפון, מסך הבית, מקלדת ושעון מעורר מותרים תמיד גם בלי זה. " +
+                    "הגדרות, חנות והסרת אפליקציות אי אפשר להוסיף.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )
@@ -410,14 +443,60 @@ class MainActivity : ComponentActivity() {
                 },
             )
 
+            // ---- orderly exit ----
+            if (armed) {
+                Spacer(Modifier.height(28.dp))
+                Hairline()
+                Spacer(Modifier.height(20.dp))
+                Eyebrow("יציאה מסודרת")
+                Spacer(Modifier.height(6.dp))
+                if (exitAt == 0L) {
+                    Text(
+                        "רוצה להפסיק? בקשת הסרה נכנסת לתוקף אחרי 48 שעות. עד אז הכול ממשיך כרגיל, " +
+                            "ואפשר לבטל בכל רגע. אין דרך מהירה יותר, וזה בכוונה.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Palette.InkSoft,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    GhostButton(
+                        text = "בקש הסרה (48 שעות)",
+                        enabled = editable,
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            prefs.exitRequestedAt = System.currentTimeMillis()
+                            exitAt = prefs.exitRequestedAt
+                            bump()
+                        },
+                    )
+                } else {
+                    Text(
+                        "ההסרה תיכנס לתוקף ב-${IsraelTime.dateTime(exitAt + DayPolicy.EXIT_COOLDOWN_MS)}. " +
+                            "עד אז החסימה ממשיכה כרגיל.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Palette.Danger,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    GhostButton(
+                        text = "בטל את בקשת ההסרה",
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            prefs.exitRequestedAt = 0L
+                            exitAt = 0L
+                            bump()
+                        },
+                    )
+                }
+            }
+
             Spacer(Modifier.height(28.dp))
             Hairline()
             Spacer(Modifier.height(20.dp))
 
+            // ---- today ----
             Eyebrow("היום")
             Spacer(Modifier.height(6.dp))
             Text(
-                "משיכיר ${clock(policy.misheyakir(day))}  ·  שקיעה ${clock(policy.sunset(day))}",
+                "משיכיר ${IsraelTime.hhmm(policy.misheyakir(day))}  ·  שקיעה ${IsraelTime.hhmm(policy.sunset(day))}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )
@@ -426,6 +505,14 @@ class MainActivity : ComponentActivity() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )
+            if (adbOn) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "ניפוי USB פעיל. דרך מחשב אפשר להסיר את האפליקציה. כבה אותו באפשרויות למפתחים אם אתה רוצה שזה יהיה אטום.",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Palette.Danger,
+                )
+            }
             Spacer(Modifier.height(16.dp))
             Text(
                 "דרך חירום: הפעלה מחדש במצב בטוח (Safe Mode) מכבה אפליקציות צד שלישי ומאפשרת להסיר את האפליקציה.",

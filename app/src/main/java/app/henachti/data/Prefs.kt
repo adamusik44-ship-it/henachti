@@ -38,11 +38,22 @@ class Prefs private constructor(context: Context) {
         get() = sp.getString(KEY_EXTRA, "") ?: ""
         set(value) = sp.edit().putString(KEY_EXTRA, value).apply()
 
+    /** User additions to the allowlist. System packages that could disable the lock are never accepted. */
     fun extraAllowedSet(): Set<String> =
         extraAllowed.split('\n', ',', ' ', ';')
             .map { it.trim() }
-            .filter { it.isNotEmpty() }
+            .filter { it.isNotEmpty() && it !in PROTECTED_PACKAGES }
             .toSet()
+
+    /** When the user asked for an orderly removal (epoch millis), or 0. */
+    var exitRequestedAt: Long
+        get() = sp.getLong(KEY_EXIT_AT, 0L)
+        set(value) = sp.edit().putLong(KEY_EXIT_AT, value).apply()
+
+    /** Switches the lock off completely (used only once the exit cool-down has elapsed). */
+    fun disarm() {
+        sp.edit().putString(KEY_API, "").putLong(KEY_EXIT_AT, 0L).apply()
+    }
 
     /** Set when the API rejected the key (401/402/403) so the key can be fixed even while locked. */
     var lastAuthError: Boolean
@@ -97,5 +108,23 @@ class Prefs private constructor(context: Context) {
         private const val KEY_VERIFIED_AT = "verified_at"
         private const val KEY_SNOOZE_DAY = "snooze_day"
         private const val KEY_SNOOZE_UNTIL = "snooze_until"
+        private const val KEY_EXIT_AT = "exit_requested_at"
+
+        /** Packages that can switch the lock off; they are blocked while locked and cannot be allowlisted. */
+        val PROTECTED_PACKAGES = setOf(
+            "com.android.settings",
+            "com.android.settings.intelligence",
+            "com.samsung.android.app.settings",
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller",
+            "com.samsung.android.packageinstaller",
+            "com.android.vending",
+            "com.samsung.android.lool",
+            "com.samsung.android.sm",
+            "com.samsung.knox.securefolder",
+            "com.miui.securitycenter",
+            "com.coloros.safecenter",
+            "com.huawei.systemmanager",
+        )
     }
 }

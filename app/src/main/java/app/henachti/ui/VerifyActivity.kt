@@ -69,6 +69,18 @@ class VerifyActivity : ComponentActivity() {
     private var imageCapture: ImageCapture? = null
     private val lensFacing = mutableIntStateOf(CameraSelector.LENS_FACING_BACK)
 
+    /** Random liveness challenge, re-rolled for every attempt, so a saved photo never matches. */
+    private val challenge = mutableIntStateOf(newChallenge())
+
+    private fun newChallenge(): Int = (1..4).random()
+
+    private fun fingersWord(n: Int): String = when (n) {
+        1 -> "אצבע אחת"
+        2 -> "שתי אצבעות"
+        3 -> "שלוש אצבעות"
+        else -> "ארבע אצבעות"
+    }
+
     private sealed class Phase {
         data object Camera : Phase()
         data object Checking : Phase()
@@ -80,7 +92,7 @@ class VerifyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs.get(this)
-        policy = DayPolicy(prefs)
+        policy = DayPolicy(this)
 
         setContent {
             HenachtiTheme {
@@ -101,7 +113,10 @@ class VerifyActivity : ComponentActivity() {
                         phase = Phase.Checking
                         takePhoto { result -> phase = result }
                     },
-                    onRetry = { phase = Phase.Camera },
+                    onRetry = {
+                        challenge.intValue = newChallenge()
+                        phase = Phase.Camera
+                    },
                     onClose = { finish() },
                     onRequestPermission = { permission.launch(Manifest.permission.CAMERA) },
                 )
@@ -119,6 +134,7 @@ class VerifyActivity : ComponentActivity() {
             onResult(Phase.Failed("המצלמה עדיין לא מוכנה. נסה שוב."))
             return
         }
+        val fingers = challenge.intValue
         capture.takePicture(
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageCapturedCallback() {
@@ -136,7 +152,7 @@ class VerifyActivity : ComponentActivity() {
                     }
                     lifecycleScope.launch {
                         val result = withContext(Dispatchers.IO) {
-                            TefillinVerifier(prefs.apiKey).verify(bytes)
+                            TefillinVerifier(prefs.apiKey).verify(bytes, fingers)
                         }
                         onResult(
                             when (result) {
@@ -182,10 +198,15 @@ class VerifyActivity : ComponentActivity() {
             Spacer(Modifier.height(44.dp))
             Eyebrow("אימות")
             Spacer(Modifier.height(8.dp))
-            Text("הראה את היד עם התפילין.", style = MaterialTheme.typography.headlineMedium)
+            val fingers = challenge.intValue
+            Text(
+                "הרם ${fingersWord(fingers)} ביד עם התפילין.",
+                style = MaterialTheme.typography.headlineMedium,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                "הבית על הזרוע והרצועות על היד צריכים להיראות בבירור. צילום חי בלבד, בלי גלריה.",
+                "בלי האגודל. הבית על הזרוע, הרצועות על היד והאצבעות המורמות צריכים להיראות בבירור. " +
+                    "צילום חי בלבד, המספר מתחלף בכל ניסיון.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )

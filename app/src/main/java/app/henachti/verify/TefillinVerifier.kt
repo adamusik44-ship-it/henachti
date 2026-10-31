@@ -28,7 +28,11 @@ class TefillinVerifier(private val apiKey: String) {
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    fun verify(jpeg: ByteArray): Result {
+    /**
+     * @param fingers the random liveness challenge: how many fingers (thumb excluded) the user was
+     * told to hold up on the hand that wears the strap. A stored photo cannot match a fresh number.
+     */
+    fun verify(jpeg: ByteArray, fingers: Int): Result {
         val image = JSONObject()
             .put("type", "image")
             .put(
@@ -37,7 +41,7 @@ class TefillinVerifier(private val apiKey: String) {
                     .put("media_type", "image/jpeg")
                     .put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP))
             )
-        val text = JSONObject().put("type", "text").put("text", USER_PROMPT)
+        val text = JSONObject().put("type", "text").put("text", userPrompt(fingers))
         val body = baseBody(maxTokens = 400)
             .put("system", SYSTEM_PROMPT)
             .put("output_config", JSONObject().put("effort", "low"))
@@ -49,7 +53,7 @@ class TefillinVerifier(private val apiKey: String) {
 
         return when (val response = post(body)) {
             is Http.Failure -> Result.Error(response.message, response.authProblem)
-            is Http.Success -> interpret(response.json)
+            is Http.Success -> interpret(response.json, fingers)
         }
     }
 
@@ -115,7 +119,7 @@ class TefillinVerifier(private val apiKey: String) {
         }
     }
 
-    private fun interpret(json: JSONObject): Result {
+    private fun interpret(json: JSONObject, fingers: Int): Result {
         if (json.optString("stop_reason") == "refusal") {
             return Result.Error("המודל סירב לנתח את התמונה. נסה לצלם שוב.")
         }
@@ -131,15 +135,20 @@ class TefillinVerifier(private val apiKey: String) {
         val onArm = parsed.optBoolean("tefillin_on_arm", false)
         val live = parsed.optBoolean("live_scene", true)
         val confidence = parsed.optDouble("confidence", 0.0)
+        val shown = parsed.optInt("fingers_shown", -1)
         val note = parsed.optString("note", "").trim()
 
-        return if (onArm && live && confidence >= 0.6) {
+        return if (onArm && live && confidence >= 0.6 && shown == fingers) {
             Result.Verified(note)
         } else {
             val reason = when {
                 !live -> "זה נראה כמו צילום של תמונה או מסך, לא יד אמיתית."
+                !onArm && note.isNotBlank() -> note
+                !onArm -> "לא זוהו תפילין על היד."
+                shown < 0 -> "התפילין נראות, אבל לא ראיתי את האצבעות המורמות. הראה את כף היד עם הרצועות."
+                shown != fingers -> "התפילין נראות, אבל ספרתי $shown אצבעות במקום $fingers. נסה שוב."
                 note.isNotBlank() -> note
-                else -> "לא זוהו תפילין על היד."
+                else -> "לא הצלחתי לאשר. נסה שוב באור טוב יותר."
             }
             Result.Rejected(reason)
         }
@@ -161,16 +170,21 @@ class TefillinVerifier(private val apiKey: String) {
 
             Tefillin shel yad: a small black leather cube (the bayit) strapped onto the bicep of the upper arm, with a long black leather strap (retzuah) wound several times around the forearm and across the hand and middle finger. Sometimes only the forearm and hand with the windings are visible; that is acceptable when the windings are clearly the black tefillin strap on a real arm.
 
+            As a liveness check the user is also told to hold up a specific number of fingers on the hand that wears the strap.
+
             Reply with ONLY a JSON object and no other text:
-            {"tefillin_on_arm": boolean, "live_scene": boolean, "confidence": number from 0 to 1, "note": string}
+            {"tefillin_on_arm": boolean, "live_scene": boolean, "confidence": number from 0 to 1, "fingers_shown": integer, "note": string}
 
             - tefillin_on_arm: true only if tefillin (the box and/or the wound strap) are physically worn on a real human arm or hand in this photo.
             - live_scene: false if the image looks like a photo of a screen, a printed picture, a drawing, a mannequin, or shows tefillin in a bag, in a box or on a table instead of being worn.
             - confidence: how sure you are about tefillin_on_arm.
+            - fingers_shown: the number of fingers clearly held up (extended) on the hand that wears the strap, thumb excluded. Use -1 if that hand's fingers are not visible.
             - note: one short, friendly sentence in Hebrew describing what you see, for example what is missing.
         """.trimIndent()
 
-        private const val USER_PROMPT =
-            "Is the person in this photo wearing tefillin on their arm right now? JSON only."
+        private fun userPrompt(fingers: Int): String =
+            "Is the person in this photo wearing tefillin on their arm right now? " +
+                "They were asked to hold up exactly $fingers finger(s), thumb excluded, on the hand that wears the strap. " +
+                "Count the raised fingers on that hand. JSON only."
     }
 }

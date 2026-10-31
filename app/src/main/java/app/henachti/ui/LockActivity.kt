@@ -20,11 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
+import app.henachti.domain.IsraelTime
 import app.henachti.domain.LockState
+import app.henachti.domain.TamperReason
 import app.henachti.service.BlockerService
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Full-screen gate shown on top of any blocked app. Back does nothing here;
@@ -39,7 +38,7 @@ class LockActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs.get(this)
-        policy = DayPolicy(prefs)
+        policy = DayPolicy(this)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = Unit
@@ -55,6 +54,7 @@ class LockActivity : ComponentActivity() {
                         onVerify = { startActivity(Intent(this, VerifyActivity::class.java)) },
                         onSnooze = { snooze(state) },
                         onHome = { goHome() },
+                        onFix = { reason -> TamperUi.launchFix(this, reason) },
                     )
                 }
             }
@@ -92,9 +92,6 @@ class LockActivity : ComponentActivity() {
     }
 }
 
-private fun clock(millis: Long): String =
-    SimpleDateFormat("HH:mm", Locale.US).format(Date(millis))
-
 @Composable
 private fun LockScreen(
     state: LockState,
@@ -102,18 +99,22 @@ private fun LockScreen(
     onVerify: () -> Unit,
     onSnooze: () -> Unit,
     onHome: () -> Unit,
+    onFix: (TamperReason) -> Unit,
 ) {
+    val tampered = state as? LockState.Tampered
     val snoozed = state as? LockState.Snoozed
     val snoozeAvailable = (state as? LockState.Locked)?.snoozeAvailable == true
 
     val title = when {
+        tampered != null -> TamperUi.title(tampered.reason)
         snoozed != null -> "זה נפתח רק אחרי תפילין."
         else -> "עוד לא הנחת תפילין היום."
     }
     val body = when {
+        tampered != null -> TamperUi.body(tampered.reason)
         snoozed != null ->
             "בחצי השעה הכול פתוח חוץ מההגדרות, חנות האפליקציות והסרת אפליקציות. " +
-                "הן נפתחות אחרי האימות. הדחייה נגמרת ב-${clock(snoozed.until)}."
+                "הן נפתחות אחרי האימות. הדחייה נגמרת ב-${IsraelTime.hhmm(snoozed.until)}."
         snoozeAvailable ->
             "הטלפון סגור עד שמראים את היד עם התפילין למצלמה. " +
                 "יש חצי שעה אחת של דחייה ביום, ואחריה זהו."
@@ -137,16 +138,21 @@ private fun LockScreen(
 
         Spacer(Modifier.weight(1f))
 
-        InkButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
-        Spacer(Modifier.height(12.dp))
-        if (snoozed == null) {
-            GhostButton(
-                text = if (snoozeAvailable) "עוד חצי שעה (פעם אחת ביום)" else "עוד חצי שעה, נוצל היום",
-                onClick = onSnooze,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = snoozeAvailable,
-            )
+        if (tampered != null) {
+            InkButton(TamperUi.action(tampered.reason), { onFix(tampered.reason) }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
+        } else {
+            InkButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(12.dp))
+            if (snoozed == null) {
+                GhostButton(
+                    text = if (snoozeAvailable) "עוד חצי שעה (פעם אחת ביום)" else "עוד חצי שעה, נוצל היום",
+                    onClick = onSnooze,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = snoozeAvailable,
+                )
+                Spacer(Modifier.height(12.dp))
+            }
         }
         TextButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) {
             Text("למסך הבית", color = Palette.Muted, style = MaterialTheme.typography.labelLarge)

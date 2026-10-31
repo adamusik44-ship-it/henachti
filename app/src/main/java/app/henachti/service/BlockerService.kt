@@ -1,6 +1,5 @@
 package app.henachti.service
 
-import android.app.AppOpsManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -19,9 +18,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import android.os.Process
 import android.os.SystemClock
-import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -29,9 +26,12 @@ import androidx.core.content.ContextCompat
 import app.henachti.R
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
+import app.henachti.domain.IsraelTime
 import app.henachti.domain.LockState
+import app.henachti.domain.TamperReason
 import app.henachti.ui.LockActivity
 import app.henachti.ui.MainActivity
+import app.henachti.ui.TamperUi
 
 /**
  * Foreground service that watches which app is in front (UsageStats events, polled while the
@@ -39,7 +39,8 @@ import app.henachti.ui.MainActivity
  *
  * No accessibility service: Play Protect blocks sideloaded apps that declare one.
  * Needs "usage access" (to see the foreground app) and "display over other apps"
- * (so the lock screen may be started from the background).
+ * (so the lock screen may be started from the background). When either is taken away
+ * while armed, the day is treated as tampered and everything stays closed until it is restored.
  */
 class BlockerService : Service() {
 
@@ -47,14 +48,17 @@ class BlockerService : Service() {
     private lateinit var prefs: Prefs
     private lateinit var policy: DayPolicy
     private lateinit var usage: UsageStatsManager
-    private val allowed = HashSet<String>()
+    private val baseAllowed = HashSet<String>()
+    private val extraAllowed = HashSet<String>()
 
     private var polling = false
     private var lastQueryEnd = 0L
     private var lastEventTs = 0L
     private var lastEvalAt = 0L
     private var lastLaunchAt = 0L
+    private var lastBlindActionAt = 0L
     private var currentPkg: String? = null
+    private var currentClass: String? = null
 
     private val poll = object : Runnable {
         override fun run() {
@@ -64,7 +68,7 @@ class BlockerService : Service() {
         }
     }
 
-    private val recheck = Runnable { currentPkg?.let { evaluate(it, force = true) } }
+    private val recheck = Runnable { currentPkg?.let { evaluate(it, currentClass, force = true) } }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -80,7 +84,7 @@ class BlockerService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs.get(this)
-        policy = DayPolicy(prefs)
+        policy = DayPolicy(this)
         usage = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         createChannel()
         startAsForeground()
@@ -130,12 +134,16 @@ class BlockerService : Service() {
 
     /** One poll: find the most recent foreground event and react to it. */
     private fun tick() {
-        if (!hasUsageAccess(this)) return
         val now = System.currentTimeMillis()
+        if (!Guard.hasUsageAccess(this)) {
+            handleBlind(now)
+            return
+        }
         val begin = (lastQueryEnd - 1_500L).coerceAtLeast(0L)
         lastQueryEnd = now
 
         var latestPkg: String? = null
+        var latestClass: String? = null
         var latestTs = lastEventTs
         val events = usage.queryEvents(begin, now)
         val event = UsageEvents.Event()
@@ -146,20 +154,31 @@ class BlockerService : Service() {
             if (event.timeStamp >= latestTs) {
                 latestTs = event.timeStamp
                 latestPkg = event.packageName
+                latestClass = event.className
             }
         }
 
         if (latestPkg != null) {
             lastEventTs = latestTs
-            if (latestPkg != currentPkg) {
+            if (latestPkg != currentPkg || latestClass != currentClass) {
                 currentPkg = latestPkg
-                evaluate(latestPkg, force = true)
+                currentClass = latestClass
+                evaluate(latestPkg, latestClass, force = true)
                 return
             }
         }
         // Even with no new event, re-check every few seconds: the snooze may have ended,
-        // or misheyakir may have passed while the same app stayed open.
-        if (now - lastEvalAt > REEVAL_MS) currentPkg?.let { evaluate(it, force = false) }
+        // misheyakir may have passed, or a permission may have been pulled.
+        if (now - lastEvalAt > REEVAL_MS) currentPkg?.let { evaluate(it, currentClass, force = false) }
+    }
+
+    /** Usage access was revoked while armed: we cannot see anything, so keep the phone unusable until it is back. */
+    private fun handleBlind(now: Long) {
+        if (!prefs.setupDone) return
+        if (now < fixGraceUntil) return
+        if (now - lastBlindActionAt < BLIND_INTERVAL_MS) return
+        lastBlindActionAt = now
+        enforce(force = true)
     }
 
     /** Rebuilds the set of packages that are never blocked (launcher, dialer, keyboard, clock, this app). */
@@ -184,10 +203,14 @@ class BlockerService : Service() {
                 .enabledInputMethodList.forEach { set += it.packageName }
         }
 
-        set += prefs.extraAllowedSet()
-        synchronized(allowed) {
-            allowed.clear()
-            allowed += set
+        // Nothing that can switch the lock off is ever allowed, whatever the launcher reports.
+        set -= Prefs.PROTECTED_PACKAGES
+
+        synchronized(baseAllowed) {
+            baseAllowed.clear()
+            baseAllowed += set
+            extraAllowed.clear()
+            extraAllowed += prefs.extraAllowedSet()
         }
     }
 
@@ -197,17 +220,41 @@ class BlockerService : Service() {
         updateNotification()
     }
 
-    private fun evaluate(pkg: String, force: Boolean) {
+    private fun evaluate(pkg: String, cls: String?, force: Boolean) {
         lastEvalAt = System.currentTimeMillis()
-        if (synchronized(allowed) { pkg in allowed }) return
-        when (val state = policy.state()) {
+        if (pkg == packageName) return
+        val state = policy.state()
+
+        if (state is LockState.Tampered) {
+            if (System.currentTimeMillis() < fixGraceUntil) return
+            if (isFixScreen(state.reason, pkg, cls)) return
+            if (synchronized(baseAllowed) { pkg in baseAllowed }) return
+            enforce(force)
+            return
+        }
+
+        val allowed = synchronized(baseAllowed) { pkg in baseAllowed || pkg in extraAllowed }
+        if (allowed) return
+
+        when (state) {
             is LockState.Locked -> showLock(force)
             is LockState.Snoozed -> {
-                if (pkg in RESTRICTED_DURING_SNOOZE) showLock(force)
+                if (pkg in Prefs.PROTECTED_PACKAGES) showLock(force)
                 scheduleRecheck(state.until)
             }
             is LockState.Unlocked -> Unit
+            is LockState.Tampered -> Unit
         }
+    }
+
+    private fun isFixScreen(reason: TamperReason, pkg: String, cls: String?): Boolean {
+        if (pkg != "com.android.settings" || cls == null) return false
+        return TamperUi.fixScreenHints(reason).any { cls.contains(it, ignoreCase = true) }
+    }
+
+    /** Show the lock screen, or when that is impossible, lock the device itself. */
+    private fun enforce(force: Boolean) {
+        if (Guard.canDrawOverlays(this)) showLock(force) else Guard.lockNow(this)
     }
 
     private fun scheduleRecheck(at: Long) {
@@ -252,8 +299,9 @@ class BlockerService : Service() {
         )
         val text = when (val st = policy.state()) {
             is LockState.Locked -> getString(R.string.notif_locked)
-            is LockState.Snoozed -> getString(R.string.notif_snoozed, clock(st.until))
+            is LockState.Snoozed -> getString(R.string.notif_snoozed, IsraelTime.hhmm(st.until))
             is LockState.Unlocked -> getString(R.string.notif_unlocked)
+            is LockState.Tampered -> getString(R.string.notif_tampered)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -278,13 +326,12 @@ class BlockerService : Service() {
         runCatching { nm.notify(NOTIFICATION_ID, buildNotification()) }
     }
 
-    private fun clock(millis: Long): String =
-        java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(millis))
-
     companion object {
         const val SNOOZE_MS = 30L * 60L * 1000L
         private const val POLL_MS = 500L
         private const val REEVAL_MS = 5_000L
+        private const val BLIND_INTERVAL_MS = 4_000L
+        private const val FIX_GRACE_MS = 90_000L
         private const val EVENT_FOREGROUND = 1 // UsageEvents.Event.MOVE_TO_FOREGROUND / ACTIVITY_RESUMED
         private const val CHANNEL_ID = "henachti_service"
         private const val NOTIFICATION_ID = 7
@@ -293,23 +340,22 @@ class BlockerService : Service() {
         var instance: BlockerService? = null
             private set
 
-        fun hasUsageAccess(context: Context): Boolean {
-            val ops = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
-            } else {
-                @Suppress("DEPRECATION")
-                ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
-            }
-            return mode == AppOpsManager.MODE_ALLOWED
+        /** While the user is repairing a tamper state we stop enforcing for a short window. */
+        @Volatile
+        private var fixGraceUntil = 0L
+
+        fun startFixGrace() {
+            fixGraceUntil = System.currentTimeMillis() + FIX_GRACE_MS
         }
 
-        fun canDrawOverlays(context: Context): Boolean = Settings.canDrawOverlays(context)
+        fun hasUsageAccess(context: Context): Boolean = Guard.hasUsageAccess(context)
 
-        /** Starts (or pokes) the service when the lock is armed and the two special permissions exist. */
+        fun canDrawOverlays(context: Context): Boolean = Guard.canDrawOverlays(context)
+
+        /** Starts (or pokes) the service when the lock is armed. */
         fun ensureRunning(context: Context) {
             val prefs = Prefs.get(context)
-            if (!prefs.setupDone || !hasUsageAccess(context) || !canDrawOverlays(context)) return
+            if (!prefs.setupDone) return
             val intent = Intent(context, BlockerService::class.java)
             runCatching { ContextCompat.startForegroundService(context, intent) }
         }
@@ -333,17 +379,6 @@ class BlockerService : Service() {
             "com.sec.android.app.clockpackage",
             "com.android.alarmclock",
             "com.google.android.gms",
-        )
-
-        /** Stay closed during the snooze so the lock cannot be disabled or uninstalled from inside it. */
-        private val RESTRICTED_DURING_SNOOZE = setOf(
-            "com.android.settings",
-            "com.android.settings.intelligence",
-            "com.samsung.android.app.settings",
-            "com.google.android.packageinstaller",
-            "com.android.packageinstaller",
-            "com.android.vending",
-            "com.samsung.android.lool",
         )
     }
 }
