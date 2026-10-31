@@ -1,10 +1,10 @@
 package app.henachti.ui
 
 import android.Manifest
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -76,18 +76,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        BlockerService.ensureRunning(this)
         tick.longValue = System.currentTimeMillis()
     }
 
-    private fun serviceEnabled(): Boolean {
-        val enabled = Settings.Secure.getString(
-            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
-        val me = ComponentName(this, BlockerService::class.java)
-        val long = me.flattenToString()
-        val short = me.flattenToShortString()
-        return enabled.split(':').any { it.equals(long, true) || it.equals(short, true) }
-    }
+    private fun usageGranted(): Boolean = BlockerService.hasUsageAccess(this)
+
+    private fun overlayGranted(): Boolean = BlockerService.canDrawOverlays(this)
+
+    private fun notificationsGranted(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+
+    private fun serviceRunning(): Boolean = BlockerService.instance != null
 
     private fun cameraGranted(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
@@ -118,7 +120,7 @@ class MainActivity : ComponentActivity() {
         is LockState.Snoozed -> "הכול פתוח עד ${clock(state.until)}, ואז נסגר שוב."
         is LockState.Unlocked -> when (state.reason) {
             UnlockReason.SETUP_INCOMPLETE ->
-                "השלם את ההגדרה הראשונית למטה. החסימה מתחילה ברגע שיש מפתח API ושירות הנגישות פועל."
+                "השלם את ההגדרה הראשונית למטה. החסימה מתחילה ברגע שיש מפתח API ושתי ההרשאות המיוחדות ניתנו."
             UnlockReason.NO_TEFILLIN_DAY ->
                 "${policy.noTefillinReason(state.day) ?: ""}. הטלפון פתוח."
             UnlockReason.VERIFIED -> "הטלפון פתוח עד משיכיר של מחר."
@@ -143,12 +145,18 @@ class MainActivity : ComponentActivity() {
         var strict by remember { mutableStateOf(prefs.strictAfterSunset) }
         var extra by remember { mutableStateOf(prefs.extraAllowed) }
 
-        val serviceOn = remember(now) { serviceEnabled() }
+        val usageOn = remember(now) { usageGranted() }
+        val overlayOn = remember(now) { overlayGranted() }
+        val notifOn = remember(now) { notificationsGranted() }
+        val running = remember(now) { serviceRunning() }
         val cameraOn = remember(now) { cameraGranted() }
         val batteryOk = remember(now) { batteryExempt() }
         val keyEditable = editable || prefs.lastAuthError
 
         val cameraPermission = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { tick.longValue = System.currentTimeMillis() }
+        val notificationPermission = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { tick.longValue = System.currentTimeMillis() }
 
@@ -173,13 +181,21 @@ class MainActivity : ComponentActivity() {
             Text(statusTitle(state), style = MaterialTheme.typography.headlineMedium)
             Spacer(Modifier.height(6.dp))
             Text(statusBody(state), style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft)
-            if (prefs.setupDone && !serviceOn) {
+            if (prefs.setupDone && !running) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "שירות הנגישות כבוי, אז בפועל שום דבר לא חסום.",
+                    if (usageOn && overlayOn) "שירות החסימה לא רץ כרגע. פתח את האפליקציה שוב או לחץ למטה."
+                    else "חסרות הרשאות, אז בפועל שום דבר לא חסום. ראה הגדרה ראשונית.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Palette.Danger,
                 )
+                if (usageOn && overlayOn) {
+                    Spacer(Modifier.height(8.dp))
+                    GhostButton("הפעל את השירות", {
+                        BlockerService.ensureRunning(this@MainActivity)
+                        tick.longValue = System.currentTimeMillis()
+                    }, Modifier.fillMaxWidth())
+                }
             }
             Spacer(Modifier.height(16.dp))
             InkButton(
@@ -196,13 +212,40 @@ class MainActivity : ComponentActivity() {
             Eyebrow("הגדרה ראשונית")
             Spacer(Modifier.height(10.dp))
             SetupRow(
-                done = serviceOn,
-                title = "שירות נגישות",
-                body = "זה מה שמאפשר לזהות איזו אפליקציה פתוחה ולחסום אותה. " +
-                    "באנדרואיד 13 ומעלה, אם המתג אפור: פרטי אפליקציה, שלוש נקודות למעלה, " +
-                    "\"אפשר הגדרות מוגבלות\", ואז לחזור לכאן.",
-                action = "פתח הגדרות נגישות",
-            ) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                done = usageOn,
+                title = "גישה לנתוני שימוש",
+                body = "כך האפליקציה יודעת איזו אפליקציה פתוחה עכשיו. ברשימה שתיפתח, מצא את \"הנחתי\" והפעל.",
+                action = "פתח הגדרות גישה לשימוש",
+            ) {
+                runCatching { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            }
+
+            SetupRow(
+                done = overlayOn,
+                title = "הצגה מעל אפליקציות אחרות",
+                body = "כך מסך הנעילה יכול לקפוץ מעל האפליקציה שנפתחה.",
+                action = "אשר הצגה מעל אפליקציות",
+            ) {
+                runCatching {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        )
+                    )
+                }
+            }
+
+            SetupRow(
+                done = notifOn,
+                title = "התראות",
+                body = "התראה שקטה אחת מחזיקה את שירות החסימה ער ומראה את המצב.",
+                action = "אשר התראות",
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
 
             SetupRow(
                 done = cameraOn,
@@ -261,6 +304,7 @@ class MainActivity : ComponentActivity() {
                             prefs.apiKey = candidate
                             prefs.lastAuthError = false
                             keyStatus = "המפתח עובד ונשמר."
+                            BlockerService.ensureRunning(this@MainActivity)
                             tick.longValue = System.currentTimeMillis()
                         } else {
                             keyStatus = problem

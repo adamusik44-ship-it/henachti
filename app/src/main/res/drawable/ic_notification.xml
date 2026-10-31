@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- monochrome status-bar glyph: the bayit on a strap -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,19 L17,5 L19,7 L5,21 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,6 L17,6 L17,15 L7,15 Z" />
+</vector>

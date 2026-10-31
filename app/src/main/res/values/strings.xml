@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">הנחתי</string>
-    <string name="accessibility_description">הנחתי משתמשת בשירות הזה רק כדי לדעת איזו אפליקציה פתוחה עכשיו, ולחסום אותה עד שמניחים תפילין. השירות לא קורא תוכן מהמסך ולא שומר כלום.</string>
+    <string name="channel_name">שירות החסימה</string>
+    <string name="channel_description">ההתראה הקבועה שמחזיקה את שירות החסימה ער.</string>
+    <string name="notif_locked">נעול עד שמניחים תפילין.</string>
+    <string name="notif_snoozed">דחייה פעילה עד %1$s.</string>
+    <string name="notif_unlocked">פתוח. שומר על ההרגל.</string>
 </resources>
