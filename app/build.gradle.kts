@@ -16,8 +16,8 @@ android {
         applicationId = "app.henachti"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     signingConfigs {
@@ -28,6 +28,11 @@ android {
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: "henachti"
                 keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                // All three schemes so every installer and Android version accepts the file.
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = false
             }
         }
     }
