@@ -16,8 +16,8 @@ android {
         applicationId = "app.henachti"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.3"
+        versionCode = 6
+        versionName = "1.4"
     }
 
     signingConfigs {
@@ -57,10 +57,6 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
-
-    androidResources {
-        noCompress += listOf("task", "tflite")
-    }
 }
 
 kotlin {
@@ -88,6 +84,5 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     implementation("androidx.camera:camera-view:1.4.1")
 
-    implementation("com.google.mediapipe:tasks-vision:0.10.14")
     implementation("com.kosherjava:zmanim:2.5.0")
 }

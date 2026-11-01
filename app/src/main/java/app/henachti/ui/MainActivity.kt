@@ -285,7 +285,7 @@ class MainActivity : ComponentActivity() {
             Text("הפעלת החסימה", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "הזיהוי נעשה בתוך הטלפון: זיהוי כף יד ואצבעות, ובדיקת רצועות שחורות על האמה ועל כף היד. " +
+                "הזיהוי נעשה בתוך הטלפון: המצלמה סופרת את הכריכות השחורות על האמה, שבע לפחות. " +
                     "בלי חשבון, בלי שרת, בלי אינטרנט ובלי תשלום. ההפעלה היא מה שמתחיל את החסימה.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
