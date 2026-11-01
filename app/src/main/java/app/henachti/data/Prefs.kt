@@ -13,12 +13,10 @@ class Prefs private constructor(context: Context) {
     private val sp: SharedPreferences =
         context.applicationContext.getSharedPreferences("henachti", Context.MODE_PRIVATE)
 
-    var apiKey: String
-        get() = sp.getString(KEY_API, "") ?: ""
-        set(value) = sp.edit().putString(KEY_API, value.trim()).apply()
+    /** The lock is armed only after the user switched it on; before that the phone is never blocked. */
+    val setupDone: Boolean get() = sp.getBoolean(KEY_ARMED, false)
 
-    /** The lock is armed only once an API key exists; before that the phone is never blocked. */
-    val setupDone: Boolean get() = apiKey.isNotBlank()
+    fun arm() = sp.edit().putBoolean(KEY_ARMED, true).apply()
 
     var cityIndex: Int
         get() = sp.getInt(KEY_CITY, 0)
@@ -52,13 +50,8 @@ class Prefs private constructor(context: Context) {
 
     /** Switches the lock off completely (used only once the exit cool-down has elapsed). */
     fun disarm() {
-        sp.edit().putString(KEY_API, "").putLong(KEY_EXIT_AT, 0L).apply()
+        sp.edit().putBoolean(KEY_ARMED, false).putLong(KEY_EXIT_AT, 0L).apply()
     }
-
-    /** Set when the API rejected the key (401/402/403) so the key can be fixed even while locked. */
-    var lastAuthError: Boolean
-        get() = sp.getBoolean(KEY_AUTH_ERR, false)
-        set(value) = sp.edit().putBoolean(KEY_AUTH_ERR, value).apply()
 
     var verifiedCount: Int
         get() = sp.getInt(KEY_COUNT, 0)
@@ -97,12 +90,11 @@ class Prefs private constructor(context: Context) {
                 instance ?: Prefs(context).also { instance = it }
             }
 
-        private const val KEY_API = "api_key"
+        private const val KEY_ARMED = "armed"
         private const val KEY_CITY = "city_index"
         private const val KEY_CHOL_HAMOED = "chol_hamoed_tefillin"
         private const val KEY_STRICT = "strict_after_sunset"
         private const val KEY_EXTRA = "extra_allowed"
-        private const val KEY_AUTH_ERR = "last_auth_error"
         private const val KEY_COUNT = "verified_count"
         private const val KEY_VERIFIED_DAY = "verified_day"
         private const val KEY_VERIFIED_AT = "verified_at"

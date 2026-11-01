@@ -51,11 +51,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
-import app.henachti.verify.TefillinVerifier
+import app.henachti.verify.TefillinDetector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import kotlin.math.max
 
 /**
@@ -67,6 +66,7 @@ class VerifyActivity : ComponentActivity() {
     private lateinit var prefs: Prefs
     private lateinit var policy: DayPolicy
     private var imageCapture: ImageCapture? = null
+    private var detector: TefillinDetector? = null
     private val lensFacing = mutableIntStateOf(CameraSelector.LENS_FACING_BACK)
 
     /** Random liveness challenge, re-rolled for every attempt, so a saved photo never matches. */
@@ -128,6 +128,12 @@ class VerifyActivity : ComponentActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
 
+    override fun onDestroy() {
+        detector?.close()
+        detector = null
+        super.onDestroy()
+    }
+
     private fun takePhoto(onResult: (Phase) -> Unit) {
         val capture = imageCapture
         if (capture == null) {
@@ -139,34 +145,31 @@ class VerifyActivity : ComponentActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val bytes = try {
-                        image.toJpegBytes()
+                    val bitmap = try {
+                        image.toUprightBitmap()
                     } catch (e: Exception) {
                         null
                     } finally {
                         image.close()
                     }
-                    if (bytes == null) {
+                    if (bitmap == null) {
                         onResult(Phase.Failed("לא הצלחתי לעבד את התמונה. נסה שוב."))
                         return
                     }
                     lifecycleScope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            TefillinVerifier(prefs.apiKey).verify(bytes, fingers)
+                        val result = withContext(Dispatchers.Default) {
+                            val d = detector ?: TefillinDetector(this@VerifyActivity).also { detector = it }
+                            d.analyze(bitmap, fingers)
                         }
                         onResult(
                             when (result) {
-                                is TefillinVerifier.Result.Verified -> {
+                                is TefillinDetector.Result.Verified -> {
                                     prefs.markVerified(policy.currentDay())
-                                    prefs.lastAuthError = false
                                     prefs.verifiedCount = prefs.verifiedCount + 1
                                     Phase.Verified(result.note)
                                 }
-                                is TefillinVerifier.Result.Rejected -> Phase.Rejected(result.reason)
-                                is TefillinVerifier.Result.Error -> {
-                                    if (result.authProblem) prefs.lastAuthError = true
-                                    Phase.Failed(result.message)
-                                }
+                                is TefillinDetector.Result.Rejected -> Phase.Rejected(result.reason)
+                                is TefillinDetector.Result.Error -> Phase.Failed(result.message)
                             }
                         )
                     }
@@ -352,8 +355,8 @@ class VerifyActivity : ComponentActivity() {
     }
 }
 
-/** JPEG from the capture, rotated upright and shrunk so the longer side is at most 1024 px. */
-private fun ImageProxy.toJpegBytes(maxSide: Int = 1024): ByteArray {
+/** Bitmap from the JPEG capture, rotated upright and shrunk so the longer side is at most 1280 px. */
+private fun ImageProxy.toUprightBitmap(maxSide: Int = 1280): Bitmap {
     val buffer = planes[0].buffer
     val raw = ByteArray(buffer.remaining())
     buffer.get(raw)
@@ -364,7 +367,11 @@ private fun ImageProxy.toJpegBytes(maxSide: Int = 1024): ByteArray {
     while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
 
     val decoded = BitmapFactory.decodeByteArray(
-        raw, 0, raw.size, BitmapFactory.Options().apply { inSampleSize = sample }
+        raw, 0, raw.size,
+        BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
     ) ?: throw IllegalStateException("decode failed")
 
     val rotation = imageInfo.rotationDegrees
@@ -375,7 +382,6 @@ private fun ImageProxy.toJpegBytes(maxSide: Int = 1024): ByteArray {
         )
     } else decoded
 
-    val out = ByteArrayOutputStream()
-    upright.compress(Bitmap.CompressFormat.JPEG, 82, out)
-    return out.toByteArray()
+    return if (upright.config == Bitmap.Config.ARGB_8888) upright
+    else upright.copy(Bitmap.Config.ARGB_8888, false)
 }

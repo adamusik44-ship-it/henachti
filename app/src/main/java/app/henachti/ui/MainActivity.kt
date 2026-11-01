@@ -36,12 +36,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.henachti.data.Prefs
@@ -52,10 +50,6 @@ import app.henachti.domain.LockState
 import app.henachti.domain.UnlockReason
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
-import app.henachti.verify.TefillinVerifier
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /** Status, first-time setup and settings. Settings are editable only while the day is unlocked. */
 class MainActivity : ComponentActivity() {
@@ -117,7 +111,7 @@ class MainActivity : ComponentActivity() {
         is LockState.Tampered -> TamperUi.body(state.reason)
         is LockState.Unlocked -> when (state.reason) {
             UnlockReason.SETUP_INCOMPLETE ->
-                "השלם את ההגדרה הראשונית למטה. שמירת מפתח ה-API היא מה שמפעיל את החסימה."
+                "השלם את ההגדרה הראשונית למטה ולחץ \"הפעל את החסימה\"."
             UnlockReason.NO_TEFILLIN_DAY ->
                 "${policy.noTefillinReason(state.day) ?: ""}. הטלפון פתוח."
             UnlockReason.VERIFIED -> "הטלפון פתוח עד משיכיר של מחר."
@@ -133,11 +127,8 @@ class MainActivity : ComponentActivity() {
         val day = state.day
         val editable = state is LockState.Unlocked
         val armed = prefs.setupDone
-        val scope = rememberCoroutineScope()
 
-        var apiKey by remember { mutableStateOf(prefs.apiKey) }
-        var keyStatus by remember { mutableStateOf<String?>(null) }
-        var testing by remember { mutableStateOf(false) }
+        var armStatus by remember { mutableStateOf<String?>(null) }
         var city by remember { mutableIntStateOf(prefs.cityIndex) }
         var chol by remember { mutableStateOf(prefs.cholHamoedTefillin) }
         var strict by remember { mutableStateOf(prefs.strictAfterSunset) }
@@ -153,7 +144,6 @@ class MainActivity : ComponentActivity() {
         val batteryOk = remember(now) { batteryExempt() }
         val adbOn = remember(now) { Guard.adbEnabled(this) }
         val readyToArm = usageOn && overlayOn && adminOn
-        val keyEditable = (editable || prefs.lastAuthError) && (readyToArm || armed)
 
         val cameraPermission = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -290,66 +280,47 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // ---- API key (arms the lock) ----
+            // ---- arming ----
             Spacer(Modifier.height(14.dp))
-            Text("מפתח API של Anthropic", style = MaterialTheme.typography.titleMedium)
+            Text("הפעלת החסימה", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(4.dp))
             Text(
-                "האימות נעשה על ידי מודל ראייה של Claude. המפתח נשמר רק בטלפון. " +
-                    "העלות: כמה אגורות ליום. שמירת המפתח היא מה שמפעיל את החסימה.",
+                "הזיהוי נעשה בתוך הטלפון: זיהוי כף יד ואצבעות, ובדיקת רצועות שחורות על האמה ועל כף היד. " +
+                    "בלי חשבון, בלי שרת, בלי אינטרנט ובלי תשלום. ההפעלה היא מה שמתחיל את החסימה.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Palette.InkSoft,
             )
             if (!readyToArm && !armed) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "קודם שלוש ההרשאות הראשונות למעלה, ואז המפתח.",
+                    "קודם שלוש ההרשאות הראשונות למעלה.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Palette.Bronze,
                 )
             }
             Spacer(Modifier.height(10.dp))
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { apiKey = it },
-                enabled = keyEditable,
-                singleLine = true,
-                placeholder = { Text("sk-ant-...") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
-            )
-            Spacer(Modifier.height(10.dp))
-            GhostButton(
-                text = if (testing) "בודק..." else "שמור ובדוק",
-                enabled = keyEditable && apiKey.isNotBlank() && !testing,
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    testing = true
-                    keyStatus = null
-                    val candidate = apiKey.trim()
-                    scope.launch {
-                        val problem = withContext(Dispatchers.IO) { TefillinVerifier(candidate).testKey() }
-                        testing = false
-                        if (problem == null) {
-                            prefs.apiKey = candidate
-                            prefs.lastAuthError = false
-                            keyStatus = "המפתח עובד ונשמר. החסימה פעילה."
-                            BlockerService.ensureRunning(this@MainActivity)
-                            bump()
-                        } else {
-                            keyStatus = problem
-                        }
-                    }
-                },
-            )
-            keyStatus?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (it.startsWith("המפתח עובד")) Palette.Success else Palette.Danger,
+            if (!armed) {
+                InkButton(
+                    text = "הפעל את החסימה",
+                    enabled = readyToArm,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        prefs.arm()
+                        armStatus = "החסימה פעילה."
+                        BlockerService.ensureRunning(this@MainActivity)
+                        bump()
+                    },
                 )
+            } else {
+                Text(
+                    "החסימה פעילה.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Palette.Success,
+                )
+            }
+            armStatus?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = Palette.Success)
             }
             if (!editable) {
                 Spacer(Modifier.height(8.dp))
