@@ -113,6 +113,37 @@ class DayPolicy(private val context: Context) {
         return if (now < misheyakir(today)) today.minusDays(1) else today
     }
 
+    /** Consecutive verified tefillin-days ending today (or yesterday if today is still open). Shabbat and holidays do not break it. */
+    fun streak(now: Long = System.currentTimeMillis()): Int {
+        val days = prefs.verifiedDays()
+        var d = currentDay(now)
+        if (isTefillinDay(d) && d.toString() !in days) d = d.minusDays(1)
+        var count = 0
+        var guard = 0
+        while (guard++ < 400) {
+            if (!isTefillinDay(d)) {
+                d = d.minusDays(1)
+                continue
+            }
+            if (d.toString() in days) {
+                count++
+                d = d.minusDays(1)
+            } else break
+        }
+        return count
+    }
+
+    /** Time-of-day greeting in Israel time. */
+    fun greeting(now: Long = System.currentTimeMillis()): String {
+        val hour = Instant.ofEpochMilli(now).atZone(IsraelTime.zone).hour
+        return when (hour) {
+            in 5..11 -> "בוקר טוב"
+            in 12..16 -> "צהריים טובים"
+            in 17..21 -> "ערב טוב"
+            else -> "לילה טוב"
+        }
+    }
+
     fun state(now: Long = System.currentTimeMillis()): LockState {
         val d = currentDay(now)
         if (!prefs.setupDone) return LockState.Unlocked(UnlockReason.SETUP_INCOMPLETE, d)

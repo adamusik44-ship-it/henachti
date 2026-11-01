@@ -16,7 +16,35 @@ class Prefs private constructor(context: Context) {
     /** The lock is armed only after the user switched it on; before that the phone is never blocked. */
     val setupDone: Boolean get() = sp.getBoolean(KEY_ARMED, false)
 
-    fun arm() = sp.edit().putBoolean(KEY_ARMED, true).apply()
+    val armedAt: Long get() = sp.getLong(KEY_ARMED_AT, 0L)
+
+    fun arm() = sp.edit().putBoolean(KEY_ARMED, true).putLong(KEY_ARMED_AT, System.currentTimeMillis()).apply()
+
+    /** The first day after arming is a trial: the lock can be switched off at once, even while locked. */
+    fun inTrialWindow(now: Long = System.currentTimeMillis()): Boolean =
+        setupDone && armedAt > 0L && now - armedAt < TRIAL_MS
+
+    var userName: String
+        get() = sp.getString(KEY_NAME, "") ?: ""
+        set(value) = sp.edit().putString(KEY_NAME, value.trim()).apply()
+
+    var prayerFontSize: Int
+        get() = sp.getInt(KEY_FONT, 24)
+        set(value) = sp.edit().putInt(KEY_FONT, value.coerceIn(18, 40)).apply()
+
+    /** Dedication: a type id (memory, healing, success, mazal, general) and a name. */
+    var dedicationType: String
+        get() = sp.getString(KEY_DED_TYPE, "") ?: ""
+        set(value) = sp.edit().putString(KEY_DED_TYPE, value).apply()
+
+    var dedicationName: String
+        get() = sp.getString(KEY_DED_NAME, "") ?: ""
+        set(value) = sp.edit().putString(KEY_DED_NAME, value.trim()).apply()
+
+    fun clearDedication() = sp.edit().remove(KEY_DED_TYPE).remove(KEY_DED_NAME).apply()
+
+    /** Every day that was verified, as ISO dates. Used for the streak. */
+    fun verifiedDays(): Set<String> = sp.getStringSet(KEY_VERIFIED_DAYS, emptySet()) ?: emptySet()
 
     var cityIndex: Int
         get() = sp.getInt(KEY_CITY, 0)
@@ -61,9 +89,13 @@ class Prefs private constructor(context: Context) {
         sp.getString(KEY_VERIFIED_DAY, null) == day.toString()
 
     fun markVerified(day: LocalDate) {
+        val days = HashSet(verifiedDays())
+        days += day.toString()
+        val trimmed = if (days.size > 400) days.sorted().takeLast(400).toHashSet() else days
         sp.edit()
             .putString(KEY_VERIFIED_DAY, day.toString())
             .putLong(KEY_VERIFIED_AT, System.currentTimeMillis())
+            .putStringSet(KEY_VERIFIED_DAYS, trimmed)
             .apply()
     }
 
@@ -91,6 +123,13 @@ class Prefs private constructor(context: Context) {
             }
 
         private const val KEY_ARMED = "armed"
+        private const val KEY_ARMED_AT = "armed_at"
+        private const val KEY_NAME = "user_name"
+        private const val KEY_FONT = "prayer_font"
+        private const val KEY_DED_TYPE = "dedication_type"
+        private const val KEY_DED_NAME = "dedication_name"
+        private const val KEY_VERIFIED_DAYS = "verified_days"
+        private const val TRIAL_MS = 24L * 60L * 60L * 1000L
         private const val KEY_CITY = "city_index"
         private const val KEY_CHOL_HAMOED = "chol_hamoed_tefillin"
         private const val KEY_STRICT = "strict_after_sunset"

@@ -1,17 +1,9 @@
 package app.henachti.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -24,24 +16,33 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.henachti.R
 
-/** Paper and ink. Calm, printed, no neon. */
+/** Warm Beige & Soft Gold: cream paper, chocolate cards, soft gold accents. */
 object Palette {
-    val Paper = Color(0xFFF4EFE6)
-    val PaperDeep = Color(0xFFEAE3D6)
-    val Ink = Color(0xFF1B1A17)
-    val InkSoft = Color(0xFF4A463F)
-    val Muted = Color(0xFF7A7367)
-    val Bronze = Color(0xFF8A6A3C)
-    val Line = Color(0xFFD8D0C2)
-    val Danger = Color(0xFF8C3B2E)
-    val Success = Color(0xFF3F6B45)
+    val Cream = Color(0xFFF6F0E6)
+    val CreamDeep = Color(0xFFEEE5D5)
+    val Sand = Color(0xFFE2D7C3)
+    val Chocolate = Color(0xFF2B2219)
+    val ChocolateDeep = Color(0xFF1C1612)
+    val Gold = Color(0xFFC9A75C)
+    val GoldSoft = Color(0xFFE2CC8E)
+    val GoldDeep = Color(0xFFA8863F)
+    val Ink = Color(0xFF2A2420)
+    val InkSoft = Color(0xFF5B5248)
+    val Muted = Color(0xFF8C8172)
+    val Success = Color(0xFF3E8E5E)
+    val Danger = Color(0xFF9B3B2E)
+
+    // names used by older screens
+    val Paper: Color get() = Cream
+    val PaperDeep: Color get() = CreamDeep
+    val Line: Color get() = Sand
+    val Bronze: Color get() = GoldDeep
 }
 
-/** Frank Ruhl Libre, variable weight 300 to 900, bundled so it works offline. */
+/** Frank Ruhl Libre for titles, Heebo for everything else. Both bundled, both variable weight. */
 val Serif = FontFamily(
     Font(R.font.frank_ruhl_libre, FontWeight.Light),
     Font(R.font.frank_ruhl_libre, FontWeight.Normal),
@@ -50,31 +51,48 @@ val Serif = FontFamily(
     Font(R.font.frank_ruhl_libre, FontWeight.Black),
 )
 
-private val HenachtiTypography = Typography(
-    displayLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 50.sp),
-    headlineMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 28.sp, lineHeight = 36.sp),
-    titleLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 30.sp),
-    titleMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 18.sp, lineHeight = 26.sp),
-    bodyLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Normal, fontSize = 18.sp, lineHeight = 28.sp),
-    bodyMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
-    labelLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 17.sp, lineHeight = 22.sp),
-    labelMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 0.6.sp),
+val Sans = FontFamily(
+    Font(R.font.heebo, FontWeight.Light),
+    Font(R.font.heebo, FontWeight.Normal),
+    Font(R.font.heebo, FontWeight.Medium),
+    Font(R.font.heebo, FontWeight.SemiBold),
+    Font(R.font.heebo, FontWeight.Bold),
 )
+
+private val HenachtiTypography = Typography(
+    displayLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 38.sp, lineHeight = 46.sp),
+    displayMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 32.sp, lineHeight = 40.sp),
+    headlineMedium = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 26.sp, lineHeight = 34.sp),
+    headlineSmall = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 30.sp),
+    titleLarge = TextStyle(fontFamily = Serif, fontWeight = FontWeight.Medium, fontSize = 20.sp, lineHeight = 28.sp),
+    titleMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    titleSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
+    bodyLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = 17.sp, lineHeight = 26.sp),
+    bodyMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
+    bodySmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    labelMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.4.sp),
+    labelSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp),
+)
+
+/** Reading style for prayer text: serif, large, generous leading. */
+fun prayerTextStyle(sizeSp: Int): TextStyle =
+    TextStyle(fontFamily = Serif, fontWeight = FontWeight.Normal, fontSize = sizeSp.sp, lineHeight = (sizeSp * 1.75f).sp)
 
 @Composable
 fun HenachtiTheme(content: @Composable () -> Unit) {
     val colors = lightColorScheme(
-        primary = Palette.Ink,
-        onPrimary = Palette.Paper,
-        secondary = Palette.Bronze,
-        onSecondary = Palette.Paper,
-        background = Palette.Paper,
+        primary = Palette.Chocolate,
+        onPrimary = Palette.Cream,
+        secondary = Palette.Gold,
+        onSecondary = Palette.Chocolate,
+        background = Palette.Cream,
         onBackground = Palette.Ink,
-        surface = Palette.Paper,
+        surface = Palette.Cream,
         onSurface = Palette.Ink,
-        surfaceVariant = Palette.PaperDeep,
+        surfaceVariant = Palette.CreamDeep,
         onSurfaceVariant = Palette.InkSoft,
-        outline = Palette.Line,
+        outline = Palette.Sand,
         error = Palette.Danger,
     )
     MaterialTheme(colorScheme = colors, typography = HenachtiTypography) {
@@ -82,63 +100,8 @@ fun HenachtiTheme(content: @Composable () -> Unit) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .background(Palette.Paper)
+                    .background(Palette.Cream)
             ) { content() }
         }
-    }
-}
-
-@Composable
-fun Eyebrow(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier = modifier, color = Palette.Bronze, style = MaterialTheme.typography.labelMedium)
-}
-
-@Composable
-fun Hairline(modifier: Modifier = Modifier) {
-    HorizontalDivider(modifier = modifier, thickness = 1.dp, color = Palette.Line)
-}
-
-@Composable
-fun InkButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(56.dp),
-        enabled = enabled,
-        shape = RoundedCornerShape(4.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Palette.Ink,
-            contentColor = Palette.Paper,
-            disabledContainerColor = Palette.Line,
-            disabledContentColor = Palette.Muted,
-        ),
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-@Composable
-fun GhostButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.height(52.dp),
-        enabled = enabled,
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(1.dp, if (enabled) Palette.Ink else Palette.Line),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = Palette.Ink,
-            disabledContentColor = Palette.Muted,
-        ),
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }

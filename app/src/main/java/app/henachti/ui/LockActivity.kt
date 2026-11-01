@@ -11,13 +11,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.henachti.data.Dedications
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
 import app.henachti.domain.IsraelTime
@@ -51,6 +58,7 @@ class LockActivity : ComponentActivity() {
                     LockScreen(
                         state = state,
                         hebrewDate = policy.hebrewDate(state.day),
+                        dedication = Dedications.label(prefs),
                         onVerify = { startActivity(Intent(this, VerifyActivity::class.java)) },
                         onSnooze = { snooze(state) },
                         onHome = { goHome() },
@@ -96,6 +104,7 @@ class LockActivity : ComponentActivity() {
 private fun LockScreen(
     state: LockState,
     hebrewDate: String,
+    dedication: String?,
     onVerify: () -> Unit,
     onSnooze: () -> Unit,
     onHome: () -> Unit,
@@ -116,7 +125,7 @@ private fun LockScreen(
             "בחצי השעה הכול פתוח חוץ מההגדרות, חנות האפליקציות והסרת אפליקציות. " +
                 "הן נפתחות אחרי האימות. הדחייה נגמרת ב-${IsraelTime.hhmm(snoozed.until)}."
         snoozeAvailable ->
-            "הטלפון סגור עד שמראים את היד עם התפילין למצלמה. " +
+            "הטלפון סגור עד שמראים את האמה עם הכריכות למצלמה. " +
                 "יש חצי שעה אחת של דחייה ביום, ואחריה זהו."
         else ->
             "חצי השעה של היום כבר נוצלה. הדרך היחידה להמשיך היא להניח."
@@ -125,24 +134,31 @@ private fun LockScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 28.dp)
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(72.dp))
+        Spacer(Modifier.height(56.dp))
         Eyebrow(hebrewDate)
-        Spacer(Modifier.height(20.dp))
-        Text(title, style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(18.dp))
-        Hairline()
-        Spacer(Modifier.height(18.dp))
-        Text(body, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft)
+        Spacer(Modifier.height(28.dp))
+        Arch(width = 124.dp, height = 152.dp) {
+            Icon(Icons.Outlined.Lock, contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(42.dp))
+        }
+        Spacer(Modifier.height(28.dp))
+        Text(title, style = MaterialTheme.typography.displayMedium, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(14.dp))
+        Text(body, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft, textAlign = TextAlign.Center)
+        if (dedication != null && tampered == null) {
+            Spacer(Modifier.height(10.dp))
+            Text("ההנחה של היום מוקדשת $dedication", style = MaterialTheme.typography.bodySmall, color = Palette.GoldDeep, textAlign = TextAlign.Center)
+        }
 
         Spacer(Modifier.weight(1f))
 
         if (tampered != null) {
-            InkButton(TamperUi.action(tampered.reason), { onFix(tampered.reason) }, Modifier.fillMaxWidth())
+            GoldButton(TamperUi.action(tampered.reason), { onFix(tampered.reason) }, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
         } else {
-            InkButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
+            GoldButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
             if (snoozed == null) {
                 GhostButton(
