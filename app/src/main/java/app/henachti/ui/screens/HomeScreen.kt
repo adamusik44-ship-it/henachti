@@ -61,7 +61,8 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onFix: (TamperReason) -> Unit,
 ) {
-    val name = prefs.userName.ifBlank { "צדיק" }
+    val name = prefs.userName
+    val greeting = if (name.isBlank()) policy.greeting(now) else "${policy.greeting(now)}, $name"
     val armed = prefs.setupDone
 
     Column(
@@ -70,7 +71,7 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
     ) {
         TopBar(
-            title = "${policy.greeting(now)}, $name",
+            title = greeting,
             onSettings = onSettings,
             leading = { TimeChip(IsraelTime.hhmm(now)) },
         )
@@ -92,31 +93,32 @@ fun HomeScreen(
             }
 
             Spacer(Modifier.height(14.dp))
-            StatRow(painterResource(R.drawable.ic_flame), "ימים ברצף", "${policy.streak(now)}")
+            val streak = policy.streak(now)
+            StatRow(painterResource(R.drawable.ic_flame), "הרצף שלך", if (streak == 1) "יום אחד" else "$streak ימים")
             Spacer(Modifier.height(10.dp))
             StatRow(
-                painterResource(R.drawable.ic_sparkle), "סך הכול הנחות", "${prefs.verifiedCount}",
+                painterResource(R.drawable.ic_sparkle), "אימותים מאז ההתקנה", "${prefs.verifiedCount}",
                 dot = if (state is LockState.Unlocked && state.reason == UnlockReason.VERIFIED) Palette.Success else null,
             )
 
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth()) {
-                DarkButton("תפילות", onPrayers, Modifier.weight(1f), icon = painterResource(R.drawable.ic_book))
+                DarkButton("הסידור", onPrayers, Modifier.weight(1f), icon = painterResource(R.drawable.ic_book))
                 HalfSpacer()
-                DarkButton("הקדשה", onDedication, Modifier.weight(1f), vector = Icons.Outlined.FavoriteBorder)
+                DarkButton("לזכות", onDedication, Modifier.weight(1f), vector = Icons.Outlined.FavoriteBorder)
             }
 
             Spacer(Modifier.height(14.dp))
             LinkRow(
                 title = when {
-                    !armed -> "ההגנה כבויה"
-                    running -> "ההגנה פעילה"
-                    else -> "ההגנה מופעלת, השירות לא רץ"
+                    !armed -> "המנעול לא דרוך"
+                    running -> "המנעול דרוך"
+                    else -> "המנעול דרוך, השירות ישן"
                 },
                 subtitle = when {
-                    !armed -> "לחץ להשלמת ההגדרה הראשונית"
-                    running -> "כל האפליקציות חסומות עד האימות של היום"
-                    else -> "פתח את ההגדרות והפעל את השירות"
+                    !armed -> "שישה מתגים, ומכאן הכול עובד לבד"
+                    running -> "נפתח רק אחרי התפילין של היום"
+                    else -> "פתח את ההגדרות והער אותו"
                 },
                 onClick = onSettings,
                 leading = {
@@ -170,7 +172,7 @@ private fun HeroCard(
                     tint = Palette.Gold, modifier = Modifier.size(38.dp),
                 )
                 Spacer(Modifier.height(8.dp))
-                Text("אור המצוות", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
+                Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -178,35 +180,35 @@ private fun HeroCard(
         when (state) {
             is LockState.Unlocked -> when (state.reason) {
                 UnlockReason.VERIFIED -> {
-                    HeroText("איזה יופי, היום פתוח", "תפילין הונחו, ממשיכים באור")
+                    HeroText("הנחת. היום שלך.", "האימות עבר, והטלפון פתוח עד מחר בבוקר.")
                     Spacer(Modifier.height(16.dp))
-                    DarkButton("הושלם", {}, Modifier.fillMaxWidth(), vector = Icons.Filled.Check)
+                    DarkButton("אושר להיום", {}, Modifier.fillMaxWidth(), vector = Icons.Filled.Check)
                 }
                 UnlockReason.NO_TEFILLIN_DAY -> {
                     val reason = policy.noTefillinReason(state.day) ?: "היום"
-                    HeroText(if (reason == "שבת") "שבת שלום" else "$reason שמח", "היום לא מניחים תפילין. הטלפון פתוח.")
+                    HeroText(if (reason == "שבת") "שבת שלום" else "$reason שמח", "אין הנחת תפילין היום, והמנעול נח.")
                 }
-                UnlockReason.AFTER_SUNSET -> HeroText("השמש שקעה", "עבר זמן תפילין להיום. מחר בוקר מתחילים מחדש.")
-                UnlockReason.SHABBAT_BEGAN -> HeroText("שבת שלום", "הטלפון פתוח עד מוצאי שבת.")
+                UnlockReason.AFTER_SUNSET -> HeroText("השמש שקעה", "זמן התפילין של היום עבר. מחר בבוקר מתחילים נקי.")
+                UnlockReason.SHABBAT_BEGAN -> HeroText("שבת שלום", "המנעול נח עד מוצאי שבת.")
                 UnlockReason.SETUP_INCOMPLETE -> {
-                    HeroText("בוא נתחיל", "כמה הרשאות, לחיצה אחת, ומכאן הכול עובד לבד.")
+                    HeroText("עוד לא דרוך", "שישה מתגים, ומכאן הכול עובד לבד.")
                     Spacer(Modifier.height(16.dp))
-                    GoldButton("הגדרה ראשונית", onSettings, Modifier.fillMaxWidth())
+                    GoldButton("להרשאות", onSettings, Modifier.fillMaxWidth())
                 }
             }
             is LockState.Locked -> {
                 HeroText(
-                    "עוד לא הנחת היום",
-                    if (state.snoozeAvailable) "הטלפון נעול עד האימות. נשארה דחייה אחת של חצי שעה."
-                    else "הטלפון נעול עד האימות. הדחייה של היום נוצלה.",
+                    "התפילין מחכות",
+                    if (state.snoozeAvailable) "הטלפון נפתח אחרי האימות במצלמה. נשארה לך חצי שעה אחת של דחייה."
+                    else "הטלפון נפתח אחרי האימות במצלמה. הדחייה של היום כבר נוצלה.",
                 )
                 Spacer(Modifier.height(16.dp))
-                GoldButton("אימות במצלמה", onVerify, Modifier.fillMaxWidth())
+                GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
             }
             is LockState.Snoozed -> {
-                HeroText("דחייה פעילה", "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז נסגר שוב.")
+                HeroText("חצי שעה של חסד", "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר.")
                 Spacer(Modifier.height(16.dp))
-                GoldButton("אימות במצלמה", onVerify, Modifier.fillMaxWidth())
+                GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
             }
             is LockState.Tampered -> {
                 HeroText(TamperUi.title(state.reason), TamperUi.body(state.reason))

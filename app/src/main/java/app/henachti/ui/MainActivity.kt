@@ -20,14 +20,19 @@ import androidx.navigation.compose.rememberNavController
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
 import app.henachti.service.BlockerService
+import app.henachti.ui.screens.DedicateScreen
 import app.henachti.ui.screens.DedicationScreen
 import app.henachti.ui.screens.HomeScreen
+import app.henachti.ui.screens.OnboardingScreen
 import app.henachti.ui.screens.PrayerReaderScreen
 import app.henachti.ui.screens.PrayersScreen
 import app.henachti.ui.screens.SettingsScreen
 import kotlinx.coroutines.delay
 
-/** The app: home, prayers, dedication, settings. One activity, Compose navigation. */
+private const val ROUTE_ONBOARDING = "onboarding"
+private const val ROUTE_SETTINGS = "settings"
+
+/** The app: permission switches on first run, then home, siddur, dedication and settings. */
 class MainActivity : ComponentActivity() {
 
     private lateinit var prefs: Prefs
@@ -61,7 +66,7 @@ class MainActivity : ComponentActivity() {
     private fun NavHostController.goTab(route: String) {
         navigate(route) {
             launchSingleTop = true
-            popUpTo("home") { saveState = true }
+            popUpTo(Tab.HOME.route) { saveState = true }
             restoreState = true
         }
     }
@@ -71,6 +76,8 @@ class MainActivity : ComponentActivity() {
         val nav = rememberNavController()
         val entry by nav.currentBackStackEntryAsState()
         val route = entry?.destination?.route
+        val firstRun = remember { !prefs.setupDone }
+        val start = remember { if (firstRun) ROUTE_ONBOARDING else Tab.HOME.route }
 
         LaunchedEffect(Unit) {
             while (true) {
@@ -92,9 +99,24 @@ class MainActivity : ComponentActivity() {
         ) { padding ->
             NavHost(
                 navController = nav,
-                startDestination = Tab.HOME.route,
+                startDestination = start,
                 modifier = Modifier.padding(padding),
             ) {
+                composable(ROUTE_ONBOARDING) {
+                    OnboardingScreen(
+                        prefs = prefs,
+                        now = now,
+                        firstRun = start == ROUTE_ONBOARDING && nav.previousBackStackEntry == null,
+                        onRefresh = { refresh() },
+                        onDone = {
+                            nav.navigate(Tab.HOME.route) {
+                                popUpTo(ROUTE_ONBOARDING) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
                 composable(Tab.HOME.route) {
                     HomeScreen(
                         prefs = prefs,
@@ -105,7 +127,7 @@ class MainActivity : ComponentActivity() {
                         onVerify = { openVerify() },
                         onPrayers = { nav.goTab(Tab.PRAYERS.route) },
                         onDedication = { nav.goTab(Tab.DEDICATION.route) },
-                        onSettings = { nav.navigate("settings") },
+                        onSettings = { nav.navigate(if (prefs.setupDone) ROUTE_SETTINGS else ROUTE_ONBOARDING) },
                         onFix = { TamperUi.launchFix(this@MainActivity, it) },
                     )
                 }
@@ -113,7 +135,7 @@ class MainActivity : ComponentActivity() {
                     PrayersScreen(
                         onOpen = { nav.navigate("prayer/$it") },
                         onBack = { nav.goTab(Tab.HOME.route) },
-                        onSettings = { nav.navigate("settings") },
+                        onSettings = { nav.navigate(ROUTE_SETTINGS) },
                     )
                 }
                 composable("prayer/{id}") { backStack ->
@@ -126,11 +148,24 @@ class MainActivity : ComponentActivity() {
                 composable(Tab.DEDICATION.route) {
                     DedicationScreen(
                         prefs = prefs,
+                        now = now,
+                        onOpenType = { nav.navigate("dedicate/$it") },
                         onBack = { nav.goTab(Tab.HOME.route) },
-                        onSettings = { nav.navigate("settings") },
+                        onSettings = { nav.navigate(ROUTE_SETTINGS) },
                     )
                 }
-                composable("settings") {
+                composable("dedicate/{type}") { backStack ->
+                    DedicateScreen(
+                        prefs = prefs,
+                        typeId = backStack.arguments?.getString("type") ?: "",
+                        onBack = { nav.popBackStack() },
+                        onSaved = {
+                            refresh()
+                            nav.popBackStack()
+                        },
+                    )
+                }
+                composable(ROUTE_SETTINGS) {
                     SettingsScreen(
                         prefs = prefs,
                         policy = policy,
@@ -138,6 +173,7 @@ class MainActivity : ComponentActivity() {
                         onBack = { nav.popBackStack() },
                         onRefresh = { refresh() },
                         onVerify = { openVerify() },
+                        onPermissions = { nav.navigate(ROUTE_ONBOARDING) },
                     )
                 }
             }

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -165,9 +166,10 @@ class VerifyActivity : ComponentActivity() {
         Column(
             Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(horizontal = 24.dp)
         ) {
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height(24.dp))
             Eyebrow("אימות")
             Spacer(Modifier.height(8.dp))
             Text(

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
@@ -134,10 +135,11 @@ private fun LockScreen(
     Column(
         Modifier
             .fillMaxSize()
+            .systemBarsPadding()
             .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(56.dp))
+        Spacer(Modifier.height(40.dp))
         Eyebrow(hebrewDate)
         Spacer(Modifier.height(28.dp))
         Arch(width = 124.dp, height = 152.dp) {

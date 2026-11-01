@@ -55,7 +55,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private val CATEGORIES = listOf("daily", "shabbat", "special")
-private val CATEGORY_LABELS = listOf("יומיומיות", "שבת ומועדים", "מיוחדות")
+private val CATEGORY_LABELS = listOf("חול", "שבת וחג", "ברכות ועוד")
 
 @Composable
 fun PrayersScreen(onOpen: (String) -> Unit, onBack: () -> Unit, onSettings: () -> Unit) {
@@ -67,11 +67,11 @@ fun PrayersScreen(onOpen: (String) -> Unit, onBack: () -> Unit, onSettings: () -
     var query by rememberSaveable { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar("תפילות", "נוסח ספרד", onBack = onBack, onSettings = onSettings)
+        TopBar("הסידור", "נוסח ספרד", onBack = onBack, onSettings = onSettings)
         ChipRow(CATEGORY_LABELS, tab) { tab = it }
         Spacer(Modifier.height(12.dp))
         Box(Modifier.padding(horizontal = 20.dp)) {
-            SearchField(query, { query = it }, "חפש תפילה...")
+            SearchField(query, { query = it }, "חיפוש בסידור...")
         }
         Spacer(Modifier.height(12.dp))
 

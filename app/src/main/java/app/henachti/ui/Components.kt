@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +29,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -363,15 +366,39 @@ fun LinkRow(title: String, subtitle: String, onClick: () -> Unit, leading: (@Com
     }
 }
 
+/** The toggle from Michael's sketch: a chocolate pill with a cream knob. */
+@Composable
+fun HenachtiSwitch(checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onChange,
+        enabled = enabled,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = Palette.Cream,
+            checkedTrackColor = Palette.Chocolate,
+            checkedBorderColor = Palette.Chocolate,
+            uncheckedThumbColor = Palette.Chocolate,
+            uncheckedTrackColor = Palette.Cream,
+            uncheckedBorderColor = Palette.Chocolate,
+        ),
+    )
+}
+
 enum class Tab(val route: String, val label: String) {
-    HOME("home", "ראשי"),
-    PRAYERS("prayers", "תפילות"),
-    DEDICATION("dedication", "הקדשה"),
+    HOME("home", "היום"),
+    PRAYERS("prayers", "סידור"),
+    DEDICATION("dedication", "לזכות"),
 }
 
 @Composable
 fun BottomNav(current: String?, onSelect: (Tab) -> Unit) {
-    Column(Modifier.fillMaxWidth().background(Palette.Cream)) {
+    // navigationBarsPadding keeps the tabs above the phone's own back/home/recents bar
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Palette.Cream)
+            .navigationBarsPadding()
+    ) {
         Hairline()
         Row(
             Modifier

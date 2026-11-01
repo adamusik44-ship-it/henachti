@@ -137,7 +137,7 @@ class DayPolicy(private val context: Context) {
     fun greeting(now: Long = System.currentTimeMillis()): String {
         val hour = Instant.ofEpochMilli(now).atZone(IsraelTime.zone).hour
         return when (hour) {
-            in 5..11 -> "בוקר טוב"
+            in 5..11 -> "בוקר אור"
             in 12..16 -> "צהריים טובים"
             in 17..21 -> "ערב טוב"
             else -> "לילה טוב"

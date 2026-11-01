@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,30 +31,35 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.henachti.R
-import app.henachti.data.DedicationType
 import app.henachti.data.Dedications
 import app.henachti.data.Prefs
 import app.henachti.ui.Arch
 import app.henachti.ui.CardShape
 import app.henachti.ui.FormField
 import app.henachti.ui.GoldButton
+import app.henachti.ui.LinkRow
 import app.henachti.ui.Palette
 import app.henachti.ui.SoftCard
 import app.henachti.ui.TopBar
 import app.henachti.ui.iconPainter
 
+/** Pick what today's tefillin are for. Each kind opens its own page to write the name. */
 @Composable
-fun DedicationScreen(prefs: Prefs, onBack: () -> Unit, onSettings: () -> Unit) {
-    var type by remember { mutableStateOf(prefs.dedicationType) }
-    var name by remember { mutableStateOf(prefs.dedicationName) }
-    var saved by remember { mutableStateOf(Dedications.label(prefs)) }
+fun DedicationScreen(
+    prefs: Prefs,
+    now: Long,
+    onOpenType: (String) -> Unit,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    var current by remember(now) { mutableStateOf(Dedications.label(prefs)) }
 
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        TopBar("הקדשת תפילה", onBack = onBack, onSettings = onSettings)
+        TopBar("לזכות מי?", onBack = onBack, onSettings = onSettings)
         Column(Modifier.padding(horizontal = 20.dp)) {
             Column(
                 Modifier
@@ -71,84 +74,112 @@ fun DedicationScreen(prefs: Prefs, onBack: () -> Unit, onSettings: () -> Unit) {
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(
-                    "לזכות מה תרצה להקדיש את התפילה?",
+                    "ההנחה והתפילות של היום יכולות להיות לזכות מישהו.",
                     style = MaterialTheme.typography.titleLarge,
                     color = Palette.Cream,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(4.dp))
-                Text("בחר את מטרת ההקדשה", style = MaterialTheme.typography.bodyMedium, color = Palette.GoldSoft)
+                Text("בחר סוג, ובעמוד הבא כתוב שם.", style = MaterialTheme.typography.bodyMedium, color = Palette.GoldSoft)
+            }
+
+            current?.let { label ->
+                Spacer(Modifier.height(14.dp))
+                SoftCard(Modifier.fillMaxWidth(), gold = true) {
+                    Column {
+                        Text("ההקדשה הפעילה", style = MaterialTheme.typography.labelMedium, color = Palette.GoldDeep)
+                        Spacer(Modifier.height(4.dp))
+                        Text(label, style = MaterialTheme.typography.titleLarge)
+                        TextButton(onClick = {
+                            prefs.clearDedication()
+                            current = null
+                        }) {
+                            Text("הסר", color = Palette.Muted)
+                        }
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
             Dedications.all.forEach { d ->
-                OptionRow(d, selected = type == d.id) { type = d.id }
+                LinkRow(
+                    title = d.title,
+                    subtitle = d.subtitle,
+                    onClick = { onOpenType(d.id) },
+                    leading = {
+                        Box(
+                            Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Palette.Cream)
+                                .border(1.dp, if (prefs.dedicationType == d.id) Palette.Gold else Palette.Sand, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(iconPainter(d.icon), contentDescription = null, tint = Palette.GoldDeep, modifier = Modifier.size(20.dp))
+                        }
+                    },
+                )
                 Spacer(Modifier.height(10.dp))
             }
-
-            Spacer(Modifier.height(6.dp))
-            Text("שם להקדשה:", style = MaterialTheme.typography.titleSmall)
-            Spacer(Modifier.height(8.dp))
-            FormField(name, { name = it }, "הכנס שם (לדוגמה: יוסף בן חנה)...")
-
-            Spacer(Modifier.height(16.dp))
-            GoldButton(
-                text = "הקדש את התפילה",
-                enabled = type.isNotBlank() && (name.isNotBlank() || type == "general"),
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    prefs.dedicationType = type
-                    prefs.dedicationName = name
-                    saved = Dedications.label(prefs)
-                },
-            )
-
-            saved?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "ההקדשה שמורה: $it. ההנחה והתפילות הבאות מוקדשות לכך.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Palette.Success,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                TextButton(
-                    onClick = {
-                        prefs.clearDedication()
-                        type = ""
-                        name = ""
-                        saved = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("הסר הקדשה", color = Palette.Muted)
-                }
-            }
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(20.dp))
         }
     }
 }
 
+/** One kind of dedication: explanation, a name, a gold button. */
 @Composable
-private fun OptionRow(d: DedicationType, selected: Boolean, onClick: () -> Unit) {
-    SoftCard(Modifier.fillMaxWidth(), onClick = onClick, gold = selected) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Palette.Cream)
-                    .border(1.dp, if (selected) Palette.Gold else Palette.Sand, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(iconPainter(d.icon), contentDescription = null, tint = Palette.GoldDeep, modifier = Modifier.size(20.dp))
+fun DedicateScreen(prefs: Prefs, typeId: String, onBack: () -> Unit, onSaved: () -> Unit) {
+    val type = Dedications.byId(typeId)
+    if (type == null) {
+        onBack()
+        return
+    }
+    var name by remember { mutableStateOf(if (prefs.dedicationType == typeId) prefs.dedicationName else "") }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        TopBar(type.title, onBack = onBack)
+        Column(
+            Modifier.padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(8.dp))
+            Arch(width = 104.dp, height = 126.dp) {
+                Icon(iconPainter(type.icon), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(38.dp))
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(d.title, style = MaterialTheme.typography.titleMedium)
-                Text(d.subtitle, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+            Spacer(Modifier.height(20.dp))
+            Text(type.title, style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            Text(type.explain, style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(22.dp))
+
+            Row(Modifier.fillMaxWidth()) {
+                Text(if (type.id == "general") "המילים שלך:" else "השם:", style = MaterialTheme.typography.titleSmall)
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = Palette.Muted)
+            Spacer(Modifier.height(8.dp))
+            FormField(name, { name = it }, type.placeholder)
+            Spacer(Modifier.height(18.dp))
+            GoldButton(
+                text = "הקדש את היום",
+                enabled = name.isNotBlank() || type.id == "general",
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    prefs.dedicationType = type.id
+                    prefs.dedicationName = name
+                    onSaved()
+                },
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "ההקדשה מופיעה במסך הראשי ובמסך הנעילה, ונשארת עד שתחליף או תסיר אותה.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.Muted,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(28.dp))
         }
     }
 }
