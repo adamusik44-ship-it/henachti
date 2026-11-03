@@ -18,7 +18,7 @@
 | 10 | CORS | לא רלוונטי | אין שרת. |
 | 11 | כותרות אבטחה | לא רלוונטי | אין HTTP. |
 | 12 | כיבוי מצב ניפוי | תקין | בניית release עם `isDebuggable=false`. אין Log, אין printStackTrace, אין הדפסות. |
-| 13 | עדכון תלויות | בוצע | AGP 9.5.0, Gradle 9.8.2, Kotlin 2.4.21, Compose BOM 2026.09.00, CameraX 1.6.2, Navigation 2.10.2, core 1.19.1, activity 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, compileSdk/targetSdk 36. Dependabot פותח PR שבועי לכל עדכון. חריג אחד: KosherJava zmanim נשאר 2.5.0 (ספריית חישוב בלבד, 3.x שינתה את ה-API). |
+| 13 | עדכון תלויות | בוצע | AGP 9.5.0, Gradle 9.8.2, Kotlin 2.4.21, Compose BOM 2026.09.00, CameraX 1.6.2, Navigation 2.10.2, core 1.19.1, activity 1.13.0, lifecycle 2.11.0, coroutines 1.11.0, compileSdk 37, targetSdk 36. Dependabot פותח PR שבועי לכל עדכון. חריג אחד: KosherJava zmanim נשאר 2.5.0 (ספריית חישוב בלבד, 3.x שינתה את ה-API). |
 | 14 | הסרת חבילות שלא בשימוש | בוצע | הוסרו okhttp, MediaPipe, ui-tooling-preview ושאריות הפרוקסי. נשארו רק הספריות שבקוד. |
 | 15 | קבצים חשופים | תקין | `.gitignore` מכסה את מפתח החתימה, הסיסמה וכל APK. נבדקה ההיסטוריה המלאה של git: אף קובץ רגיש לא הועלה מעולם. |
 | 16 | אבטחת מסד הנתונים | תקין | אין מסד נתונים. ההעדפות באחסון הפרטי של האפליקציה, שמוגן על ידי מערכת ההפעלה בטלפון שאינו פרוץ. |

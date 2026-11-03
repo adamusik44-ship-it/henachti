@@ -10,7 +10,7 @@ val keystoreFile = rootProject.file("app/release.p12")
 
 android {
     namespace = "app.henachti"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.henachti"
