@@ -35,10 +35,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Henachti">
 
+        <!-- Empty task affinities: no other app can join our tasks (task hijacking). -->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -50,14 +52,14 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
-            android:taskAffinity="app.henachti.lock" />
+            android:taskAffinity="" />
 
         <activity
             android:name=".ui.VerifyActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:screenOrientation="portrait"
-            android:taskAffinity="app.henachti.verify" />
+            android:taskAffinity="" />
 
         <service
             android:name=".service.BlockerService"

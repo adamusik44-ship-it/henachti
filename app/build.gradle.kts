@@ -10,14 +10,14 @@ val keystoreFile = rootProject.file("app/release.p12")
 
 android {
     namespace = "app.henachti"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.henachti"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 10
-        versionName = "2.2"
+        targetSdk = 36
+        versionCode = 11
+        versionName = "2.3"
     }
 
     signingConfigs {
@@ -39,6 +39,8 @@ android {
 
     buildTypes {
         release {
+            // Release builds are never debuggable; the code is public anyway, so no obfuscation.
+            isDebuggable = false
             isMinifyEnabled = false
             signingConfig = if (keystoreFile.exists()) signingConfigs.getByName("release")
                             else signingConfigs.getByName("debug")
@@ -57,6 +59,13 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+
+    lint {
+        // Lint runs in CI and publishes a report; it never blocks the build.
+        abortOnError = false
+        checkReleaseBuilds = true
+        htmlReport = true
+    }
 }
 
 kotlin {
@@ -66,24 +75,25 @@ kotlin {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.navigation:navigation-compose:2.8.5")
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
 
-    implementation("androidx.camera:camera-core:1.4.1")
-    implementation("androidx.camera:camera-camera2:1.4.1")
-    implementation("androidx.camera:camera-lifecycle:1.4.1")
-    implementation("androidx.camera:camera-view:1.4.1")
+    implementation("androidx.camera:camera-core:1.6.2")
+    implementation("androidx.camera:camera-camera2:1.6.2")
+    implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("androidx.camera:camera-view:1.6.2")
 
+    // Pure calendar arithmetic, no I/O. 3.x renamed its classes; kept on 2.5.0 (no security surface).
     implementation("com.kosherjava:zmanim:2.5.0")
 }

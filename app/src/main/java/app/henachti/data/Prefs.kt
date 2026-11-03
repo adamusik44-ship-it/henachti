@@ -26,7 +26,7 @@ class Prefs private constructor(context: Context) {
 
     var userName: String
         get() = sp.getString(KEY_NAME, "") ?: ""
-        set(value) = sp.edit().putString(KEY_NAME, value.trim()).apply()
+        set(value) = sp.edit().putString(KEY_NAME, cleanText(value, 40)).apply()
 
     var prayerFontSize: Int
         get() = sp.getInt(KEY_FONT, 24)
@@ -39,7 +39,11 @@ class Prefs private constructor(context: Context) {
 
     var dedicationName: String
         get() = sp.getString(KEY_DED_NAME, "") ?: ""
-        set(value) = sp.edit().putString(KEY_DED_NAME, value.trim()).apply()
+        set(value) = sp.edit().putString(KEY_DED_NAME, cleanText(value, 80)).apply()
+
+    /** Free text from the user: trimmed, single-line, bounded, control characters removed. */
+    private fun cleanText(value: String, max: Int): String =
+        value.replace(Regex("[\\p{Cntrl}]"), " ").replace(Regex("\\s+"), " ").trim().take(max)
 
     fun clearDedication() = sp.edit().remove(KEY_DED_TYPE).remove(KEY_DED_NAME).apply()
 
@@ -64,11 +68,15 @@ class Prefs private constructor(context: Context) {
         get() = sp.getString(KEY_EXTRA, "") ?: ""
         set(value) = sp.edit().putString(KEY_EXTRA, value).apply()
 
-    /** User additions to the allowlist. System packages that could disable the lock are never accepted. */
+    /**
+     * User additions to the allowlist. Only well-formed package names are accepted, and system
+     * packages that could disable the lock are never accepted.
+     */
     fun extraAllowedSet(): Set<String> =
         extraAllowed.split('\n', ',', ' ', ';')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && it !in PROTECTED_PACKAGES }
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() && PACKAGE_NAME.matches(it) && it !in PROTECTED_PACKAGES }
+            .take(50)
             .toSet()
 
     /** When the user asked for an orderly removal (epoch millis), or 0. */
@@ -156,6 +164,8 @@ class Prefs private constructor(context: Context) {
         private const val KEY_SNOOZE_MAX = "snoozes_per_day"
         private const val KEY_LOCK_START = "lock_start_minutes"
         private const val KEY_EXIT_AT = "exit_requested_at"
+
+        private val PACKAGE_NAME = Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$")
 
         /** Packages that can switch the lock off; they are blocked while locked and cannot be allowlisted. */
         val PROTECTED_PACKAGES = setOf(
