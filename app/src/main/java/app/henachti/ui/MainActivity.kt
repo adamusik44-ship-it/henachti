@@ -20,6 +20,8 @@ import androidx.navigation.compose.rememberNavController
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
 import app.henachti.service.BlockerService
+import app.henachti.BuildConfig
+import app.henachti.ui.screens.AboutScreen
 import app.henachti.ui.screens.DedicateScreen
 import app.henachti.ui.screens.DedicationScreen
 import app.henachti.ui.screens.HomeScreen
@@ -31,6 +33,7 @@ import kotlinx.coroutines.delay
 
 private const val ROUTE_ONBOARDING = "onboarding"
 private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_ABOUT = "about"
 
 /** The app: permission switches on first run, then home, siddur, dedication and settings. */
 class MainActivity : ComponentActivity() {
@@ -174,7 +177,11 @@ class MainActivity : ComponentActivity() {
                         onRefresh = { refresh() },
                         onVerify = { openVerify() },
                         onPermissions = { nav.navigate(ROUTE_ONBOARDING) },
+                        onAbout = { nav.navigate(ROUTE_ABOUT) },
                     )
+                }
+                composable(ROUTE_ABOUT) {
+                    AboutScreen(version = BuildConfig.VERSION_NAME, onBack = { nav.popBackStack() })
                 }
             }
         }

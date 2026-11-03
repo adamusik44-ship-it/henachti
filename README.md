@@ -50,6 +50,10 @@
 
 ניפוי USB (ADB) ממחשב הוא פרצה נוספת, אם הוא דלוק. האפליקציה מתריעה על זה.
 
+## רישוי ופרטיות
+
+קוד האפליקציה: MIT (`LICENSE`). רכיבי צד שלישי ורישיונותיהם: `THIRD_PARTY_NOTICES.md` (טקסט הסידור מ-Sefaria ברישיון CC-BY, KosherJava ב-LGPL 2.1, גופנים ב-OFL). מדיניות פרטיות ותנאי שימוש: `PRIVACY.md`, וגם בתוך האפליקציה תחת הגדרות.
+
 ## בנייה
 
 הפרויקט נבנה אוטומטית ב-GitHub Actions בכל דחיפה ל-`main` (`.github/workflows/android.yml`) ומפרסם את ה-APK החתום ל-Release בשם `latest`. חתימה: קובץ `app/release.p12` שמגיע מה-secret `KEYSTORE_B64`, יחד עם `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.

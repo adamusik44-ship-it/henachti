@@ -185,7 +185,17 @@ fun PrayerReaderScreen(id: String, prefs: Prefs, onBack: () -> Unit) {
                         Spacer(Modifier.height(12.dp))
                     }
                 }
-                item { Spacer(Modifier.height(48.dp)) }
+                item {
+                    Spacer(Modifier.height(28.dp))
+                    Hairline()
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "הטקסט: סידור מצודה (1981), באדיבות Sefaria, רישיון CC-BY.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Palette.Muted,
+                    )
+                    Spacer(Modifier.height(40.dp))
+                }
             }
         }
     }

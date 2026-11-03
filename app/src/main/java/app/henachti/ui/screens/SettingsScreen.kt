@@ -65,6 +65,7 @@ fun SettingsScreen(
     onRefresh: () -> Unit,
     onVerify: () -> Unit,
     onPermissions: () -> Unit,
+    onAbout: () -> Unit,
 ) {
     val context = LocalContext.current
     val state = remember(now) { policy.state(now) }
@@ -301,6 +302,13 @@ fun SettingsScreen(
             Text(
                 "דרך חירום: הפעלה מחדש במצב בטוח (Safe Mode) מכבה אפליקציות צד שלישי ומאפשרת להסיר את האפליקציה.",
                 style = MaterialTheme.typography.labelMedium, color = Palette.Muted,
+            )
+
+            Section("על האפליקציה")
+            LinkRow(
+                title = "פרטיות, תנאים ורישיונות",
+                subtitle = "מה נשמר (כלום מחוץ לטלפון), מה מותר, ומי כתב מה",
+                onClick = onAbout,
             )
             Spacer(Modifier.height(40.dp))
         }
