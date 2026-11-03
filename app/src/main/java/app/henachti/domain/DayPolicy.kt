@@ -32,7 +32,7 @@ object Cities {
     )
 }
 
-enum class UnlockReason { SETUP_INCOMPLETE, NO_TEFILLIN_DAY, VERIFIED, AFTER_SUNSET, SHABBAT_BEGAN }
+enum class UnlockReason { SETUP_INCOMPLETE, NO_TEFILLIN_DAY, VERIFIED, BEFORE_START, AFTER_SUNSET, SHABBAT_BEGAN }
 
 /** Something the lock relies on was switched off while armed. Everything stays closed until fixed. */
 enum class TamperReason { MANUAL_TIME, NO_USAGE_ACCESS, NO_OVERLAY, NO_ADMIN }
@@ -42,8 +42,13 @@ sealed class LockState {
     abstract val day: LocalDate
 
     data class Unlocked(val reason: UnlockReason, override val day: LocalDate) : LockState()
-    data class Locked(override val day: LocalDate, val snoozeAvailable: Boolean) : LockState()
-    data class Snoozed(override val day: LocalDate, val until: Long) : LockState()
+
+    data class Locked(override val day: LocalDate, val snoozesLeft: Int, val snoozesPerDay: Int) : LockState() {
+        val snoozeAvailable: Boolean get() = snoozesLeft > 0
+    }
+
+    data class Snoozed(override val day: LocalDate, val until: Long, val used: Int, val max: Int) : LockState()
+
     data class Tampered(val reason: TamperReason, override val day: LocalDate) : LockState()
 }
 
@@ -107,6 +112,15 @@ class DayPolicy(private val context: Context) {
     fun sunset(date: LocalDate): Long =
         zmanim(date).sunset?.time ?: fallback(date, LocalTime.of(18, 0))
 
+    /** When the lock arms that morning: misheyakir, or the user's chosen time if it is later. */
+    fun lockStart(date: LocalDate): Long {
+        val earliest = misheyakir(date)
+        val chosen = prefs.lockStartMinutes
+        if (chosen < 0) return earliest
+        val at = fallback(date, LocalTime.of(chosen / 60, chosen % 60))
+        return maxOf(earliest, at)
+    }
+
     /** The tefillin-day that `now` belongs to: before today's misheyakir we are still in yesterday's night. */
     fun currentDay(now: Long = System.currentTimeMillis()): LocalDate {
         val today = Instant.ofEpochMilli(now).atZone(IsraelTime.zone).toLocalDate()
@@ -164,6 +178,8 @@ class DayPolicy(private val context: Context) {
 
         if (!isTefillinDay(d)) return LockState.Unlocked(UnlockReason.NO_TEFILLIN_DAY, d)
         if (prefs.isVerified(d)) return LockState.Unlocked(UnlockReason.VERIFIED, d)
+        // The user may arm the lock later than misheyakir; verifying earlier still counts for the day.
+        if (now < lockStart(d)) return LockState.Unlocked(UnlockReason.BEFORE_START, d)
 
         if (now >= sunset(d)) {
             if (!prefs.strictAfterSunset) return LockState.Unlocked(UnlockReason.AFTER_SUNSET, d)
@@ -171,10 +187,12 @@ class DayPolicy(private val context: Context) {
             if (!isTefillinDay(d.plusDays(1))) return LockState.Unlocked(UnlockReason.SHABBAT_BEGAN, d)
         }
 
-        if (prefs.snoozeUsed(d) && now < prefs.snoozeUntil) {
-            return LockState.Snoozed(d, prefs.snoozeUntil)
+        val max = prefs.snoozesPerDay
+        val used = prefs.snoozesUsed(d)
+        if (used > 0 && now < prefs.snoozeUntil) {
+            return LockState.Snoozed(d, prefs.snoozeUntil, used, max)
         }
-        return LockState.Locked(d, snoozeAvailable = !prefs.snoozeUsed(d))
+        return LockState.Locked(d, snoozesLeft = (max - used).coerceAtLeast(0), snoozesPerDay = max)
     }
 
     companion object {

@@ -113,7 +113,10 @@ private fun LockScreen(
 ) {
     val tampered = state as? LockState.Tampered
     val snoozed = state as? LockState.Snoozed
-    val snoozeAvailable = (state as? LockState.Locked)?.snoozeAvailable == true
+    val locked = state as? LockState.Locked
+    val snoozeAvailable = locked?.snoozeAvailable == true
+    val left = locked?.snoozesLeft ?: 0
+    val max = locked?.snoozesPerDay ?: 0
 
     val title = when {
         tampered != null -> TamperUi.title(tampered.reason)
@@ -123,13 +126,15 @@ private fun LockScreen(
     val body = when {
         tampered != null -> TamperUi.body(tampered.reason)
         snoozed != null ->
-            "בחצי השעה הכול פתוח חוץ מההגדרות, חנות האפליקציות והסרת אפליקציות. " +
-                "הן נפתחות אחרי האימות. הדחייה נגמרת ב-${IsraelTime.hhmm(snoozed.until)}."
+            "דחייה ${snoozed.used} מתוך ${snoozed.max}. הכול פתוח חוץ מההגדרות, חנות האפליקציות והסרת אפליקציות, " +
+                "והן נפתחות אחרי האימות. הדחייה נגמרת ב-${IsraelTime.hhmm(snoozed.until)}."
         snoozeAvailable ->
             "הטלפון סגור עד שמראים את האמה עם הכריכות למצלמה. " +
-                "יש חצי שעה אחת של דחייה ביום, ואחריה זהו."
+                if (left == 1) "נשארה לך דחייה אחת של חצי שעה להיום." else "נשארו לך $left דחיות של חצי שעה להיום."
+        max == 0 ->
+            "אין דחיות. הדרך היחידה להמשיך היא להניח."
         else ->
-            "חצי השעה של היום כבר נוצלה. הדרך היחידה להמשיך היא להניח."
+            "הדחיות של היום נגמרו. הדרך היחידה להמשיך היא להניח."
     }
 
     Column(
@@ -162,9 +167,9 @@ private fun LockScreen(
         } else {
             GoldButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
             Spacer(Modifier.height(12.dp))
-            if (snoozed == null) {
+            if (snoozed == null && max > 0) {
                 GhostButton(
-                    text = if (snoozeAvailable) "עוד חצי שעה (פעם אחת ביום)" else "עוד חצי שעה, נוצל היום",
+                    text = if (snoozeAvailable) "עוד חצי שעה ($left מתוך $max)" else "הדחיות נגמרו להיום",
                     onClick = onSnooze,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = snoozeAvailable,

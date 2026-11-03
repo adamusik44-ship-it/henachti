@@ -3,6 +3,7 @@ package app.henachti.ui.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,6 +42,8 @@ import app.henachti.domain.LockState
 import app.henachti.domain.UnlockReason
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
+import app.henachti.ui.ChipRow
+import app.henachti.ui.CircleButton
 import app.henachti.ui.Eyebrow
 import app.henachti.ui.FormField
 import app.henachti.ui.GhostButton
@@ -75,6 +78,8 @@ fun SettingsScreen(
     var strict by remember { mutableStateOf(prefs.strictAfterSunset) }
     var extra by remember { mutableStateOf(prefs.extraAllowed) }
     var exitAt by remember(now) { mutableLongStateOf(prefs.exitRequestedAt) }
+    var lockStart by remember { mutableIntStateOf(prefs.lockStartMinutes) }
+    var snoozes by remember { mutableIntStateOf(prefs.snoozesPerDay) }
 
     val granted = remember(now) { grantedCount(context) }
     val cameraOn = remember(now) {
@@ -159,7 +164,75 @@ fun SettingsScreen(
                     }
                 }
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(14.dp))
+            Text("מתי המנעול נדרך בבוקר", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "לפני השעה הזאת הטלפון פתוח. אימות נספר כבר מזמן משיכיר.",
+                style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft,
+            )
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                "מזמן משיכיר",
+                "הכי מוקדם שמותר להניח, לפי העיר. היום: ${IsraelTime.hhmm(policy.misheyakir(day))}",
+                lockStart < 0, editable,
+            ) { on ->
+                lockStart = if (on) -1 else 7 * 60 + 30
+                prefs.lockStartMinutes = lockStart
+                onRefresh()
+            }
+            if (lockStart >= 0) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    CircleButton({
+                        if (editable) {
+                            lockStart = (lockStart - 15).coerceAtLeast(4 * 60)
+                            prefs.lockStartMinutes = lockStart
+                            onRefresh()
+                        }
+                    }) { Text("−", style = MaterialTheme.typography.titleLarge, color = Palette.Ink) }
+                    Spacer(Modifier.width(22.dp))
+                    Text(
+                        "%02d:%02d".format(java.util.Locale.US, lockStart / 60, lockStart % 60),
+                        style = MaterialTheme.typography.displayMedium,
+                        color = if (editable) Palette.Ink else Palette.Muted,
+                    )
+                    Spacer(Modifier.width(22.dp))
+                    CircleButton({
+                        if (editable) {
+                            lockStart = (lockStart + 15).coerceAtMost(16 * 60)
+                            prefs.lockStartMinutes = lockStart
+                            onRefresh()
+                        }
+                    }) { Text("+", style = MaterialTheme.typography.titleLarge, color = Palette.Ink) }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "קפיצות של רבע שעה. אם משיכיר מאוחר מהשעה הזאת, המנעול מחכה למשיכיר.",
+                    style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
+                )
+                Spacer(Modifier.height(14.dp))
+            }
+
+            Text("דחיות של חצי שעה ביום", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "כל דחייה פותחת הכול לחצי שעה. כשהן נגמרות, רק אימות.",
+                style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft,
+            )
+            Spacer(Modifier.height(8.dp))
+            ChipRow(listOf("בלי", "1", "2", "3"), snoozes) {
+                if (editable) {
+                    snoozes = it
+                    prefs.snoozesPerDay = it
+                    onRefresh()
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
             SwitchRow("מניחים תפילין בחול המועד", "ברירת המחדל בארץ: לא מניחים, והמנעול נח.", chol, editable) {
                 chol = it; prefs.cholHamoedTefillin = it; onRefresh()
             }
@@ -264,21 +337,25 @@ private fun statusTitle(state: LockState): String = when (state) {
         UnlockReason.SETUP_INCOMPLETE -> "המנעול עוד לא דרוך."
         UnlockReason.NO_TEFILLIN_DAY -> "היום לא מניחים."
         UnlockReason.VERIFIED -> "הנחת היום."
+        UnlockReason.BEFORE_START -> "עוד מוקדם."
         UnlockReason.AFTER_SUNSET -> "השמש שקעה."
         UnlockReason.SHABBAT_BEGAN -> "שבת או חג נכנסו."
     }
 }
 
 private fun statusBody(state: LockState, policy: DayPolicy): String = when (state) {
-    is LockState.Locked ->
-        if (state.snoozeAvailable) "הטלפון סגור. נשארה חצי שעה אחת של דחייה להיום."
-        else "הטלפון סגור. הדחייה של היום כבר נוצלה."
-    is LockState.Snoozed -> "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר."
+    is LockState.Locked -> when {
+        state.snoozesLeft == 1 -> "הטלפון סגור. נשארה דחייה אחת של חצי שעה להיום."
+        state.snoozesLeft > 1 -> "הטלפון סגור. נשארו ${state.snoozesLeft} דחיות של חצי שעה להיום."
+        else -> "הטלפון סגור. הדחיות של היום נגמרו."
+    }
+    is LockState.Snoozed -> "דחייה ${state.used} מתוך ${state.max}. הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר."
     is LockState.Tampered -> TamperUi.body(state.reason)
     is LockState.Unlocked -> when (state.reason) {
         UnlockReason.SETUP_INCOMPLETE -> "הדלק את המתגים במסך ההרשאות ולחץ \"דרוך את המנעול\"."
         UnlockReason.NO_TEFILLIN_DAY -> "${policy.noTefillinReason(state.day) ?: ""}. המנעול נח."
         UnlockReason.VERIFIED -> "הטלפון פתוח עד משיכיר של מחר."
+        UnlockReason.BEFORE_START -> "המנעול נדרך ב-${IsraelTime.hhmm(policy.lockStart(state.day))}. אפשר כבר לאמת."
         UnlockReason.AFTER_SUNSET -> "זמן התפילין של היום עבר. הטלפון פתוח עד מחר בבוקר."
         UnlockReason.SHABBAT_BEGAN -> "המנעול נח. שבת שלום."
     }

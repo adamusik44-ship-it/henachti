@@ -101,17 +101,30 @@ class Prefs private constructor(context: Context) {
 
     val verifiedAt: Long get() = sp.getLong(KEY_VERIFIED_AT, 0L)
 
-    fun snoozeUsed(day: LocalDate): Boolean =
-        sp.getString(KEY_SNOOZE_DAY, null) == day.toString()
+    /** How many half-hour snoozes a day allows (0 to 3). */
+    var snoozesPerDay: Int
+        get() = sp.getInt(KEY_SNOOZE_MAX, 3)
+        set(value) = sp.edit().putInt(KEY_SNOOZE_MAX, value.coerceIn(0, 3)).apply()
+
+    /** Snoozes already taken on that day. */
+    fun snoozesUsed(day: LocalDate): Int =
+        if (sp.getString(KEY_SNOOZE_DAY, null) == day.toString()) sp.getInt(KEY_SNOOZE_COUNT, 0) else 0
 
     val snoozeUntil: Long get() = sp.getLong(KEY_SNOOZE_UNTIL, 0L)
 
     fun startSnooze(day: LocalDate, until: Long) {
+        val used = snoozesUsed(day)
         sp.edit()
             .putString(KEY_SNOOZE_DAY, day.toString())
+            .putInt(KEY_SNOOZE_COUNT, used + 1)
             .putLong(KEY_SNOOZE_UNTIL, until)
             .apply()
     }
+
+    /** Minutes after midnight (Israel time) when the lock arms in the morning; -1 = misheyakir. */
+    var lockStartMinutes: Int
+        get() = sp.getInt(KEY_LOCK_START, -1)
+        set(value) = sp.edit().putInt(KEY_LOCK_START, if (value < 0) -1 else value.coerceIn(4 * 60, 16 * 60)).apply()
 
     companion object {
         @Volatile
@@ -139,6 +152,9 @@ class Prefs private constructor(context: Context) {
         private const val KEY_VERIFIED_AT = "verified_at"
         private const val KEY_SNOOZE_DAY = "snooze_day"
         private const val KEY_SNOOZE_UNTIL = "snooze_until"
+        private const val KEY_SNOOZE_COUNT = "snooze_count"
+        private const val KEY_SNOOZE_MAX = "snoozes_per_day"
+        private const val KEY_LOCK_START = "lock_start_minutes"
         private const val KEY_EXIT_AT = "exit_requested_at"
 
         /** Packages that can switch the lock off; they are blocked while locked and cannot be allowlisted. */

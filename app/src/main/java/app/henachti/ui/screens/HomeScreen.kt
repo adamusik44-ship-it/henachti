@@ -188,6 +188,11 @@ private fun HeroCard(
                     val reason = policy.noTefillinReason(state.day) ?: "היום"
                     HeroText(if (reason == "שבת") "שבת שלום" else "$reason שמח", "אין הנחת תפילין היום, והמנעול נח.")
                 }
+                UnlockReason.BEFORE_START -> {
+                    HeroText("עוד מוקדם", "המנעול נדרך ב-${IsraelTime.hhmm(policy.lockStart(state.day))}. עד אז הטלפון פתוח, ואפשר כבר לאמת.")
+                    Spacer(Modifier.height(16.dp))
+                    GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
+                }
                 UnlockReason.AFTER_SUNSET -> HeroText("השמש שקעה", "זמן התפילין של היום עבר. מחר בבוקר מתחילים נקי.")
                 UnlockReason.SHABBAT_BEGAN -> HeroText("שבת שלום", "המנעול נח עד מוצאי שבת.")
                 UnlockReason.SETUP_INCOMPLETE -> {
@@ -199,14 +204,17 @@ private fun HeroCard(
             is LockState.Locked -> {
                 HeroText(
                     "התפילין מחכות",
-                    if (state.snoozeAvailable) "הטלפון נפתח אחרי האימות במצלמה. נשארה לך חצי שעה אחת של דחייה."
-                    else "הטלפון נפתח אחרי האימות במצלמה. הדחייה של היום כבר נוצלה.",
+                    when {
+                        state.snoozesLeft == 1 -> "הטלפון נפתח אחרי האימות במצלמה. נשארה לך דחייה אחת של חצי שעה."
+                        state.snoozesLeft > 1 -> "הטלפון נפתח אחרי האימות במצלמה. נשארו לך ${state.snoozesLeft} דחיות של חצי שעה."
+                        else -> "הטלפון נפתח אחרי האימות במצלמה. הדחיות של היום נגמרו."
+                    },
                 )
                 Spacer(Modifier.height(16.dp))
                 GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
             }
             is LockState.Snoozed -> {
-                HeroText("חצי שעה של חסד", "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר.")
+                HeroText("חצי שעה של חסד", "דחייה ${state.used} מתוך ${state.max}. הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר.")
                 Spacer(Modifier.height(16.dp))
                 GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
             }
