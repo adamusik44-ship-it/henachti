@@ -96,5 +96,5 @@ dependencies {
     implementation("androidx.camera:camera-view:1.6.2")
 
     // Pure calendar arithmetic, no I/O. 3.x renamed its classes; kept on 2.5.0 (no security surface).
-    implementation("com.kosherjava:zmanim:2.5.0")
+    implementation("com.kosherjava:zmanim:3.1.0")
 }
