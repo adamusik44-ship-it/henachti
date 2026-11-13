@@ -205,6 +205,8 @@ class BlockerService : Service() {
 
         // Nothing that can switch the lock off is ever allowed, whatever the launcher reports.
         set -= Prefs.PROTECTED_PACKAGES
+        // Google Play build: the system uninstall dialog always stays reachable, so the app is easy to remove.
+        if (Guard.IS_PLAY) set += INSTALLER_PACKAGES
 
         synchronized(baseAllowed) {
             baseAllowed.clear()
@@ -359,6 +361,13 @@ class BlockerService : Service() {
             val intent = Intent(context, BlockerService::class.java)
             runCatching { ContextCompat.startForegroundService(context, intent) }
         }
+
+        /** The system's install / uninstall dialogs. */
+        private val INSTALLER_PACKAGES = setOf(
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller",
+            "com.samsung.android.packageinstaller",
+        )
 
         /** Always reachable, even while locked: calls, alarms, system UI, permission dialogs. */
         private val SYSTEM_ALLOWED = setOf(
