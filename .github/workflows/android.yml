@@ -54,27 +54,27 @@ jobs:
           if-no-files-found: ignore
 
       - name: Collect APK
-        run: cp app/build/outputs/apk/release/app-release.apk henachti.apk
+        run: cp app/build/outputs/apk/release/app-release.apk ukshartem.apk
 
       - name: Verify APK signature and manifest
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          "$BT/apksigner" verify --verbose --print-certs henachti.apk
-          "$BT/aapt2" dump badging henachti.apk | grep -E "^package|sdkVersion|targetSdkVersion|uses-permission|launchable" || true
-          ls -la henachti.apk
+          "$BT/apksigner" verify --verbose --print-certs ukshartem.apk
+          "$BT/aapt2" dump badging ukshartem.apk | grep -E "^package|sdkVersion|targetSdkVersion|uses-permission|launchable" || true
+          ls -la ukshartem.apk
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: henachti-apk
-          path: henachti.apk
+          name: ukshartem-apk
+          path: ukshartem.apk
 
       - name: Publish rolling release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --cleanup-tag -y --repo "$GITHUB_REPOSITORY" || true
-          gh release create latest henachti.apk \
+          gh release create latest ukshartem.apk \
             --repo "$GITHUB_REPOSITORY" \
-            --title "הנחתי - גרסה אחרונה" \
+            --title "וקשרתם - גרסה אחרונה" \
             --notes "Build from commit ${GITHUB_SHA}" \
             --latest

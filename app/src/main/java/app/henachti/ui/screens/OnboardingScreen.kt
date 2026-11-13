@@ -106,7 +106,7 @@ fun OnboardingScreen(
             Spacer(Modifier.height(18.dp))
 
             ToggleRow(usageOn, "לראות איזו אפליקציה פתוחה",
-                "בלי זה המנעול עיוור. ברשימה שתיפתח מצא את \"הנחתי\" והדלק.") {
+                "בלי זה המנעול עיוור. ברשימה שתיפתח מצא את \"וקשרתם\" והדלק.") {
                 open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             }
             ToggleRow(overlayOn, "להציג את מסך הנעילה מעל אפליקציות",

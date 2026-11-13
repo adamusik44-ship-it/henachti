@@ -36,7 +36,7 @@ object Guard {
             .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent(context))
             .putExtra(
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                "מונע הסרה של הנחתי בלחיצה ארוכה. הסרה מסודרת אפשרית מתוך האפליקציה, אחרי 48 שעות."
+                "מונע הסרה של וקשרתם בלחיצה ארוכה. הסרה מסודרת אפשרית מתוך האפליקציה, אחרי 48 שעות."
             )
 
     /** Automatic date and time from the network. Without it the day could simply be moved. */

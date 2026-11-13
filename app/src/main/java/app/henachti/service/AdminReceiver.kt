@@ -13,7 +13,7 @@ class AdminReceiver : DeviceAdminReceiver() {
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence =
         "כיבוי ההגנה ייחשב לניסיון עקיפה והטלפון יינעל עד שתוחזר. " +
-            "להסרה מסודרת: פתח את הנחתי ובקש הסרה, היא נכנסת לתוקף אחרי 48 שעות."
+            "להסרה מסודרת: פתח את וקשרתם ובקש הסרה, היא נכנסת לתוקף אחרי 48 שעות."
 
     override fun onDisabled(context: Context, intent: Intent) {
         BlockerService.instance?.updateNotification()
