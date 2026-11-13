@@ -174,7 +174,7 @@ class DayPolicy(private val context: Context) {
         if (!Guard.autoTimeOn(context)) return LockState.Tampered(TamperReason.MANUAL_TIME, d)
         if (!Guard.hasUsageAccess(context)) return LockState.Tampered(TamperReason.NO_USAGE_ACCESS, d)
         if (!Guard.canDrawOverlays(context)) return LockState.Tampered(TamperReason.NO_OVERLAY, d)
-        if (!Guard.isAdminActive(context)) return LockState.Tampered(TamperReason.NO_ADMIN, d)
+        if (Guard.ADMIN_SUPPORTED && !Guard.isAdminActive(context)) return LockState.Tampered(TamperReason.NO_ADMIN, d)
 
         if (!isTefillinDay(d)) return LockState.Unlocked(UnlockReason.NO_TEFILLIN_DAY, d)
         if (prefs.isVerified(d)) return LockState.Unlocked(UnlockReason.VERIFIED, d)

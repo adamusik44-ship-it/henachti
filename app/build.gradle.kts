@@ -16,8 +16,21 @@ android {
         applicationId = "app.henachti"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "2.4"
+        versionCode = 14
+        versionName = "2.5"
+    }
+
+    // direct = the sideloaded APK (keeps the original id so it updates in place, full uninstall protection).
+    // play   = the Google Play bundle (its own permanent id, Play-policy-safe permission set).
+    flavorDimensions += "channel"
+    productFlavors {
+        create("direct") {
+            dimension = "channel"
+        }
+        create("play") {
+            dimension = "channel"
+            applicationId = "app.ukshartem"
+        }
     }
 
     signingConfigs {

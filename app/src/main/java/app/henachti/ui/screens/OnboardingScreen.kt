@@ -39,12 +39,15 @@ import app.henachti.ui.Palette
 import app.henachti.ui.SoftCard
 import app.henachti.ui.TopBar
 
-/** Counts how many of the six switches are on. Used by Settings for its summary line. */
+/** Six switches in the direct build, five on Google Play (no uninstall protection there). */
+fun totalSwitches(): Int = if (Guard.ADMIN_SUPPORTED) 6 else 5
+
+/** Counts how many of the switches are on. Used by Settings for its summary line. */
 fun grantedCount(context: Context): Int {
     var n = 0
     if (Guard.hasUsageAccess(context)) n++
     if (Guard.canDrawOverlays(context)) n++
-    if (Guard.isAdminActive(context)) n++
+    if (Guard.ADMIN_SUPPORTED && Guard.isAdminActive(context)) n++
     if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) n++
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
@@ -81,7 +84,8 @@ fun OnboardingScreen(
         (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
     }
     val armed = prefs.setupDone
-    val required = usageOn && overlayOn && adminOn
+    val withAdmin = Guard.ADMIN_SUPPORTED
+    val required = usageOn && overlayOn && (adminOn || !withAdmin)
 
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onRefresh() }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onRefresh() }
@@ -97,10 +101,14 @@ fun OnboardingScreen(
     ) {
         TopBar(if (firstRun) "לפני שמתחילים" else "הרשאות ומנעול", onBack = if (firstRun) null else onBack)
         Column(Modifier.padding(horizontal = 20.dp)) {
-            Text("שישה מתגים, ומכאן הכול עובד לבד.", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                if (withAdmin) "שישה מתגים, ומכאן הכול עובד לבד." else "חמישה מתגים, ומכאן הכול עובד לבד.",
+                style = MaterialTheme.typography.headlineSmall,
+            )
             Spacer(Modifier.height(6.dp))
             Text(
-                "כל מתג פותח את מסך המערכת המתאים. כשחוזרים לכאן הוא כבר דלוק. שלושת הראשונים חובה.",
+                "כל מתג פותח את מסך המערכת המתאים. כשחוזרים לכאן הוא כבר דלוק. " +
+                    if (withAdmin) "שלושת הראשונים חובה." else "שני הראשונים חובה.",
                 style = MaterialTheme.typography.bodyMedium, color = Palette.InkSoft,
             )
             Spacer(Modifier.height(18.dp))
@@ -113,9 +121,11 @@ fun OnboardingScreen(
                 "כך המסך קופץ מעל מה שפתחת.") {
                 open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
             }
-            ToggleRow(adminOn, "הגנה מפני מחיקה",
-                "אנדרואיד לא ייתן למחוק את האפליקציה בלחיצה ארוכה. יש מסך אישור של המערכת.") {
-                open(Guard.addAdminIntent(context))
+            if (withAdmin) {
+                ToggleRow(adminOn, "הגנה מפני מחיקה",
+                    "אנדרואיד לא ייתן למחוק את האפליקציה בלחיצה ארוכה. יש מסך אישור של המערכת.") {
+                    open(Guard.addAdminIntent(context))
+                }
             }
             ToggleRow(cameraOn, "מצלמה", "לאימות החי של הכריכות. בלי גלריה.") {
                 cameraPermission.launch(Manifest.permission.CAMERA)
@@ -125,15 +135,21 @@ fun OnboardingScreen(
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
-            ToggleRow(batteryOk, "בלי חיסכון סוללה על האפליקציה", "כדי שהשירות לא יירדם באמצע היום.") {
-                open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
+            ToggleRow(
+                batteryOk, "בלי חיסכון סוללה על האפליקציה",
+                if (Guard.IS_PLAY) "כדי שהשירות לא יירדם באמצע היום. ברשימה שתיפתח בחר \"כל האפליקציות\", מצא את \"וקשרתם\" וכבה את החיסכון."
+                else "כדי שהשירות לא יירדם באמצע היום.",
+            ) {
+                // The direct request needs a permission Google Play restricts; the Play build opens the system list instead.
+                if (Guard.IS_PLAY) open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                else open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
             }
 
             Spacer(Modifier.height(22.dp))
             if (!armed) {
                 if (!required) {
                     Text(
-                        "כשהשלושה הראשונים דלוקים, הכפתור נפתח.",
+                        if (withAdmin) "כשהשלושה הראשונים דלוקים, הכפתור נפתח." else "כשהשניים הראשונים דלוקים, הכפתור נפתח.",
                         style = MaterialTheme.typography.bodySmall, color = Palette.GoldDeep,
                         modifier = Modifier.fillMaxWidth(),
                     )

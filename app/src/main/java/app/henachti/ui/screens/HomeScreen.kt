@@ -116,7 +116,7 @@ fun HomeScreen(
                     else -> "המנעול דרוך, השירות ישן"
                 },
                 subtitle = when {
-                    !armed -> "שישה מתגים, ומכאן הכול עובד לבד"
+                    !armed -> "כמה מתגים, ומכאן הכול עובד לבד"
                     running -> "נפתח רק אחרי התפילין של היום"
                     else -> "פתח את ההגדרות והער אותו"
                 },
@@ -196,7 +196,7 @@ private fun HeroCard(
                 UnlockReason.AFTER_SUNSET -> HeroText("השמש שקעה", "זמן התפילין של היום עבר. מחר בבוקר מתחילים נקי.")
                 UnlockReason.SHABBAT_BEGAN -> HeroText("שבת שלום", "המנעול נח עד מוצאי שבת.")
                 UnlockReason.SETUP_INCOMPLETE -> {
-                    HeroText("עוד לא דרוך", "שישה מתגים, ומכאן הכול עובד לבד.")
+                    HeroText("עוד לא דרוך", "כמה מתגים, ומכאן הכול עובד לבד.")
                     Spacer(Modifier.height(16.dp))
                     GoldButton("להרשאות", onSettings, Modifier.fillMaxWidth())
                 }

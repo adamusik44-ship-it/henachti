@@ -8,3 +8,4 @@ app/release.p12
 keystore/
 *.apk
 ads/
+store/*.aab

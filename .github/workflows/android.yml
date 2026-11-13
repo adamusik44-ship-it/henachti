@@ -39,22 +39,37 @@ jobs:
         if: env.KEYSTORE_B64 != ''
         run: echo "$KEYSTORE_B64" | base64 -d > app/release.p12
 
-      - name: Build release APK
-        run: gradle assembleRelease --no-daemon --stacktrace
+      - name: Build the direct APK and the Google Play bundle
+        run: gradle assembleDirectRelease bundlePlayRelease --no-daemon --stacktrace
 
       - name: Lint (report only, never blocks)
         continue-on-error: true
-        run: gradle lintRelease --no-daemon
+        run: gradle lintPlayRelease --no-daemon
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: lint-report
-          path: app/build/reports/lint-results-release.html
+          path: app/build/reports/lint-results-playRelease.html
           if-no-files-found: ignore
 
-      - name: Collect APK
-        run: cp app/build/outputs/apk/release/app-release.apk ukshartem.apk
+      - name: Collect APK and bundle
+        run: |
+          cp app/build/outputs/apk/direct/release/app-direct-release.apk ukshartem.apk
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab ukshartem.aab
+
+      - name: Verify the Google Play bundle
+        run: |
+          jarsigner -verify ukshartem.aab | tail -1
+          echo "play id occurrences:   $(unzip -p ukshartem.aab base/manifest/AndroidManifest.xml | grep -a -c 'app.ukshartem' || true)"
+          echo "device admin in play:  $(unzip -p ukshartem.aab base/manifest/AndroidManifest.xml | grep -a -c 'BIND_DEVICE_ADMIN' || true)"
+          echo "battery perm in play:  $(unzip -p ukshartem.aab base/manifest/AndroidManifest.xml | grep -a -c 'REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' || true)"
+          ls -la ukshartem.aab
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ukshartem-play-bundle
+          path: ukshartem.aab
 
       - name: Verify APK signature and manifest
         run: |

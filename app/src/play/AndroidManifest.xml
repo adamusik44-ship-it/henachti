@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Play build: no device admin (Play removes apps that block their own uninstallation)
+     and no direct battery-exemption request (a permission Play restricts). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        tools:node="remove" />
+
+    <application>
+        <receiver
+            android:name="app.henachti.service.AdminReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>

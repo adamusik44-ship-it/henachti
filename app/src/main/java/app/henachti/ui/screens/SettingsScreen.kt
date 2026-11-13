@@ -121,7 +121,7 @@ fun SettingsScreen(
             Section("הרשאות ומנעול")
             LinkRow(
                 title = if (armed) "המנעול דרוך" else "המנעול לא דרוך",
-                subtitle = "$granted מתוך 6 מתגים דלוקים. לחץ לפתיחה.",
+                subtitle = "$granted מתוך ${totalSwitches()} מתגים דלוקים. לחץ לפתיחה.",
                 onClick = onPermissions,
                 leading = {
                     Icon(
