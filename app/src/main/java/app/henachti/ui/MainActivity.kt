@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
 import app.henachti.service.BlockerService
+import app.henachti.service.Guard
 import app.henachti.BuildConfig
 import app.henachti.ui.screens.AboutScreen
 import app.henachti.ui.screens.DedicateScreen
@@ -38,6 +39,10 @@ private const val ROUTE_ABOUT = "about"
 /** The app: permission switches on first run, then home, siddur, dedication and settings. */
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        const val EXTRA_REQUEST_ADMIN = "request_admin"
+    }
+
     private lateinit var prefs: Prefs
     private lateinit var policy: DayPolicy
     private val tick = mutableLongStateOf(System.currentTimeMillis())
@@ -49,6 +54,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             HenachtiTheme { AppRoot() }
         }
+        handleAdminRequest(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAdminRequest(intent)
+    }
+
+    /** The lock screen cannot open the device-admin screen itself (see Guard.requestAdmin), so it asks us to. */
+    private fun handleAdminRequest(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_REQUEST_ADMIN, false) != true) return
+        intent.removeExtra(EXTRA_REQUEST_ADMIN)
+        BlockerService.startFixGrace()
+        Guard.requestAdmin(this)
     }
 
     override fun onResume() {

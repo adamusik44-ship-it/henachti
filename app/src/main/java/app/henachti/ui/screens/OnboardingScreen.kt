@@ -33,6 +33,7 @@ import androidx.core.content.ContextCompat
 import app.henachti.data.Prefs
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
+import app.henachti.service.findActivity
 import app.henachti.ui.GoldButton
 import app.henachti.ui.HenachtiSwitch
 import app.henachti.ui.Palette
@@ -90,8 +91,14 @@ fun OnboardingScreen(
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onRefresh() }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onRefresh() }
 
+    // System screens are opened from the Activity itself, with no extra flags. Some of them
+    // (device admin above all) close at once when they are started as a new task.
+    val activity = context.findActivity()
     fun open(intent: Intent) {
-        runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        runCatching {
+            if (activity != null) activity.startActivity(intent)
+            else context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     }
 
     Column(
@@ -124,7 +131,7 @@ fun OnboardingScreen(
             if (withAdmin) {
                 ToggleRow(adminOn, "הגנה מפני מחיקה",
                     "אנדרואיד לא ייתן למחוק את האפליקציה בלחיצה ארוכה. יש מסך אישור של המערכת.") {
-                    open(Guard.addAdminIntent(context))
+                    if (activity != null) Guard.requestAdmin(activity) else open(Guard.addAdminIntent(context))
                 }
             }
             ToggleRow(cameraOn, "מצלמה", "לאימות החי של הכריכות. בלי גלריה.") {

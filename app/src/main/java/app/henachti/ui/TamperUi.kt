@@ -7,6 +7,7 @@ import android.provider.Settings
 import app.henachti.domain.TamperReason
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
+import app.henachti.service.findActivity
 
 /** Texts and fix-actions for the tamper states, shared by the lock screen and the main screen. */
 object TamperUi {
@@ -60,6 +61,23 @@ object TamperUi {
     /** Opens the right Settings screen and gives the user a short grace window to use it. */
     fun launchFix(context: Context, reason: TamperReason) {
         BlockerService.startFixGrace()
+        if (reason == TamperReason.NO_ADMIN) {
+            // The activation screen refuses to open as a new task, and anything started from the
+            // singleInstance lock screen becomes one. So the main screen opens it from its own task.
+            val activity = context.findActivity()
+            if (activity is MainActivity) {
+                Guard.requestAdmin(activity)
+            } else {
+                runCatching {
+                    context.startActivity(
+                        Intent(context, MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            .putExtra(MainActivity.EXTRA_REQUEST_ADMIN, true)
+                    )
+                }
+            }
+            return
+        }
         runCatching {
             context.startActivity(intent(context, reason).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }

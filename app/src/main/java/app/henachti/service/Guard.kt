@@ -1,14 +1,23 @@
 package app.henachti.service
 
+import android.app.Activity
 import android.app.AppOpsManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
 import app.henachti.BuildConfig
+
+/** The Activity behind a Compose or wrapped context, if there is one. */
+tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 /** Device-level checks the lock depends on, and the device-admin hooks that make it hard to remove. */
 object Guard {
@@ -48,6 +57,15 @@ object Guard {
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
                 "מונע הסרה של וקשרתם בלחיצה ארוכה. הסרה מסודרת אפשרית מתוך האפליקציה, אחרי 48 שעות."
             )
+
+    /**
+     * Opens the system's "activate device admin" screen. That screen closes itself at once when it
+     * is started with FLAG_ACTIVITY_NEW_TASK ("Cannot start ADD_DEVICE_ADMIN as a new task"), so it
+     * has to be started from an Activity, with no extra flags, and never from a singleInstance one.
+     */
+    fun requestAdmin(activity: Activity) {
+        runCatching { activity.startActivity(addAdminIntent(activity)) }
+    }
 
     /** Automatic date and time from the network. Without it the day could simply be moved. */
     fun autoTimeOn(context: Context): Boolean =
