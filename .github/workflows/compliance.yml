@@ -1,0 +1,61 @@
+name: Play compliance
+
+# Manual only. Builds the Play release (APK + AAB, signed with the upload key when the secrets exist),
+# runs lint, and checks the final artifacts against Google Play's rules (.github/compliance/check_play.py).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: 'platform-tools'
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          gradle-version: '9.8.2'
+
+      - name: Restore signing keystore
+        if: env.KEYSTORE_B64 != ''
+        run: echo "$KEYSTORE_B64" | base64 -d > app/release.p12
+
+      - name: Build the Play release and run lint
+        run: gradle assemblePlayRelease bundlePlayRelease lintPlayRelease --no-daemon --stacktrace
+
+      - name: Check against Google Play's rules
+        run: |
+          python3 .github/compliance/check_play.py \
+            --apk app/build/outputs/apk/play/release/app-play-release.apk \
+            --aab app/build/outputs/bundle/playRelease/app-play-release.aab \
+            --lint app/build/reports/lint-results-playRelease.xml \
+            --store store \
+            --listing store/google-play.md \
+            --privacy-url https://adamusik44-ship-it.github.io/ukshartem/privacy.html \
+            --report compliance-report.md
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: compliance-report
+          path: |
+            compliance-report.md
+            app/build/reports/lint-results-playRelease.html
+            app/build/reports/lint-results-playRelease.xml
+          if-no-files-found: warn
