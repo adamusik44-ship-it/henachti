@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>store strip</title>
+<style>html,body{margin:0;background:#F6F0E6}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="5400" height="1920"></canvas>
+<script>
+// Google Play screenshots as one continuous strip: five 1080x1920 frames on a single canvas.
+// The ground band, the gold baseline and the half-dots on every frame edge line up in any order,
+// so the strip reads as one piece whether the store lays the frames out left-to-right or right-to-left.
+const P = {
+  Cream: "#F6F0E6", CreamDeep: "#EEE5D5", Sand: "#E2D7C3", Chocolate: "#2B2219", ChocolateDeep: "#1C1612",
+  Gold: "#C9A75C", GoldSoft: "#E2CC8E", GoldDeep: "#A8863F", Ink: "#2A2420", InkSoft: "#5B5248",
+  Muted: "#8C8172", Success: "#3E8E5E",
+};
+const W = 1080, H = 1920, N = 5;
+const BASE = 1660;
+const c = document.getElementById("c");
+const x = c.getContext("2d");
+x.direction = "rtl";
+
+const SERIF = "FRL", SANS = "Heebo";
+const f = (size, weight = 400, fam = SANS) => `${weight} ${size}px "${fam}"`;
+
+function rr(px, py, w, h, r) {
+  x.beginPath();
+  x.moveTo(px + r, py);
+  x.arcTo(px + w, py, px + w, py + h, r);
+  x.arcTo(px + w, py + h, px, py + h, r);
+  x.arcTo(px, py + h, px, py, r);
+  x.arcTo(px, py, px + w, py, r);
+  x.closePath();
+}
+function archPath(px, py, w, h) {
+  const r = w / 2;
+  x.beginPath();
+  x.moveTo(px, py + h);
+  x.lineTo(px, py + r);
+  x.arc(px + r, py + r, r, Math.PI, 0);
+  x.lineTo(px + w, py + h);
+  x.closePath();
+}
+function text(s, px, py, font, color, align = "center") {
+  x.font = font; x.fillStyle = color; x.textAlign = align; x.textBaseline = "alphabetic";
+  x.fillText(s, px, py);
+}
+function lines(s, font, maxW) {
+  x.font = font;
+  const words = s.split(" "); const out = []; let cur = "";
+  for (const w of words) {
+    const t = cur ? cur + " " + w : w;
+    if (x.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function para(s, px, py, font, color, maxW, lh, align = "center") {
+  const ls = lines(s, font, maxW);
+  ls.forEach((l, i) => text(l, px, py + i * lh, font, color, align));
+  return py + ls.length * lh;
+}
+function dot(px, py, r, fill, stroke, lw = 3) {
+  x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2);
+  if (fill) { x.fillStyle = fill; x.fill(); }
+  if (stroke) { x.strokeStyle = stroke; x.lineWidth = lw; x.stroke(); }
+}
+function goldGrad(px, w) {
+  const g = x.createLinearGradient(px, 0, px + w, 0);
+  g.addColorStop(0, P.GoldSoft); g.addColorStop(0.5, P.Gold); g.addColorStop(1, P.GoldDeep);
+  return g;
+}
+function goldButton(cx, py, w, h, label) {
+  rr(cx - w / 2, py, w, h, 24); x.fillStyle = goldGrad(cx - w / 2, w); x.fill();
+  text(label, cx, py + h / 2 + 10, f(28, 600), P.ChocolateDeep);
+}
+function ghostButton(cx, py, w, h, label) {
+  rr(cx - w / 2, py, w, h, 24); x.strokeStyle = P.Chocolate; x.lineWidth = 2; x.stroke();
+  text(label, cx, py + h / 2 + 10, f(28, 600), P.Ink);
+}
+function darkButton(cx, py, w, h, label) {
+  rr(cx - w / 2, py, w, h, 24); x.fillStyle = P.Chocolate; x.fill();
+  text(label, cx, py + h / 2 + 10, f(26, 600), P.Cream);
+}
+// the app's arch: chocolate with a gold edge
+function darkArch(cx, py, w, h) {
+  archPath(cx - w / 2, py, w, h);
+  const g = x.createLinearGradient(0, py, 0, py + h);
+  g.addColorStop(0, P.ChocolateDeep); g.addColorStop(1, P.Chocolate);
+  x.fillStyle = g; x.fill();
+  x.strokeStyle = P.Gold; x.lineWidth = 3; x.stroke();
+}
+// the lock from the app (OpeningLock), open = 0..1
+function lock(cx, cy, s, open, color = P.Gold) {
+  const w = s, h = s, l = cx - w / 2, t = cy - h / 2, lw = s * 0.05;
+  x.strokeStyle = color; x.fillStyle = color; x.lineWidth = lw; x.lineCap = "round";
+  const bodyTop = t + h * 0.46;
+  rr(l + w * 0.18, bodyTop, w * 0.64, h * 0.48, s * 0.1); x.stroke();
+  dot(cx, bodyTop + h * 0.22, s * 0.06, color);
+  const sw = w * 0.40, sl = cx - sw / 2, up = open * h * 0.16, at = t + h * 0.10 - up;
+  x.beginPath(); x.arc(sl + sw / 2, at + sw / 2, sw / 2, Math.PI, 0); x.stroke();
+  const legTop = at + sw / 2;
+  x.beginPath(); x.moveTo(sl, legTop); x.lineTo(sl, bodyTop); x.stroke();
+  x.beginPath(); x.moveTo(sl + sw, legTop); x.lineTo(sl + sw, bodyTop - up); x.stroke();
+}
+function snoozeDots(rightX, cy, left, max, label) {
+  // RTL row: dots first (on the right), then the label
+  let px = rightX;
+  for (let i = 0; i < max; i++) {
+    dot(px - 9, cy, 9, i < left ? P.Gold : null, i < left ? P.Gold : P.Sand, 3);
+    px -= 28;
+  }
+  text(label, px - 6, cy + 8, f(21, 500), P.Muted, "right");
+}
+
+// ---------- the phone ----------
+const PH = { w: 600, h: 1240, top: 560 };
+function phone(ox, draw, darkScreen = false) {
+  const px = ox + (W - PH.w) / 2, py = PH.top;
+  x.save();
+  x.shadowColor = "rgba(28,22,18,0.35)"; x.shadowBlur = 70; x.shadowOffsetY = 34;
+  rr(px, py, PH.w, PH.h, 70); x.fillStyle = P.ChocolateDeep; x.fill();
+  x.restore();
+  const s = { x: px + 16, y: py + 16, w: PH.w - 32, h: PH.h - 32 };
+  x.save();
+  rr(s.x, s.y, s.w, s.h, 56); x.clip();
+  x.fillStyle = darkScreen ? P.ChocolateDeep : P.Cream; x.fillRect(s.x, s.y, s.w, s.h);
+  // status bar
+  text("7:24", s.x + 52, s.y + 46, f(22, 600), darkScreen ? P.Sand : P.InkSoft, "left");
+  draw(s);
+  x.restore();
+  dot(px + PH.w / 2, py + 40, 9, "#0d0a08");
+}
+
+// ---------- screen 1: the lock screen with the day arc ----------
+function lockScreen(s) {
+  const cx = s.x + s.w / 2;
+  text("יום רביעי", cx, s.y + 112, f(22, 500), P.GoldDeep);
+  darkArch(cx, s.y + 140, 150, 184);
+  lock(cx, s.y + 240, 64, 0);
+  let y = para("עוד לא הנחת תפילין היום.", cx, s.y + 400, f(44, 500, SERIF), P.Ink, 470, 54);
+  y = para("הטלפון סגור עד שמראים למצלמה את האמה עם הכריכות.", cx, y + 14, f(24), P.InkSoft, 470, 36);
+  // the arc
+  const aw = 470, ah = 92, ax = cx - aw / 2, ay = y + 40;
+  const rx = aw / 2 - 12, ry = ah - 24, acx = cx, acy = ay + ah - 12;
+  x.save(); x.setLineDash([9, 13]); x.strokeStyle = P.Sand; x.lineWidth = 5; x.lineCap = "round";
+  x.beginPath(); x.ellipse(acx, acy, rx, ry, 0, Math.PI, 0); x.stroke(); x.restore();
+  const frac = 0.42;
+  x.strokeStyle = P.Gold; x.lineWidth = 5; x.lineCap = "round";
+  x.beginPath(); x.ellipse(acx, acy, rx, ry, 0, 0, -Math.PI * frac, true); x.stroke();
+  const a = -Math.PI * frac;
+  const dx = acx + rx * Math.cos(a), dy = acy + ry * Math.sin(a);
+  dot(dx, dy, 14, P.Gold); dot(dx, dy, 6, P.ChocolateDeep);
+  text("מ-05:41", ax + aw, acy + 40, f(20, 500), P.Muted, "right");
+  text("שקיעה 16:38", ax, acy + 40, f(20, 500), P.Muted, "left");
+  text("עוד 5 שעות ו-12 דקות עד השקיעה", cx, acy + 84, f(24, 600), P.GoldDeep);
+  goldButton(cx, s.y + s.h - 330, 480, 84, "הנחתי. אמת במצלמה");
+  ghostButton(cx, s.y + s.h - 230, 480, 76, "עוד חצי שעה");
+  snoozeDots(cx + 110, s.y + s.h - 122, 2, 3, "נשארו 2 דחיות");
+  text("למסך הבית", cx, s.y + s.h - 56, f(24, 600), P.Muted);
+}
+
+// ---------- screen 2: verify, windings filling in ----------
+function arm(bx, by, bw, bh) {
+  const cy = by + bh / 2, e = bh * 0.30, wr = bh * 0.19;
+  const p = new Path2D();
+  p.moveTo(bx + bw * 0.02, cy - e);
+  p.bezierCurveTo(bx + bw * 0.35, cy - e * 1.05, bx + bw * 0.62, cy - wr * 1.15, bx + bw * 0.80, cy - wr);
+  p.bezierCurveTo(bx + bw * 0.88, cy - wr * 1.2, bx + bw * 0.99, cy - wr * 0.9, bx + bw * 0.99, cy);
+  p.bezierCurveTo(bx + bw * 0.99, cy + wr * 0.9, bx + bw * 0.88, cy + wr * 1.2, bx + bw * 0.80, cy + wr);
+  p.bezierCurveTo(bx + bw * 0.62, cy + wr * 1.15, bx + bw * 0.35, cy + e * 1.05, bx + bw * 0.02, cy + e);
+  p.closePath();
+  const g = x.createLinearGradient(0, cy - e, 0, cy + e);
+  g.addColorStop(0, "#a7836a"); g.addColorStop(0.5, "#b8937a"); g.addColorStop(1, "#7f604c");
+  x.fillStyle = g; x.fill(p);
+  x.save(); x.clip(p);
+  x.strokeStyle = "#17110d"; x.lineWidth = 15; x.lineCap = "butt";
+  for (let k = 0; k < 7; k++) {
+    const sx = bx + bw * (0.12 + k * 0.088);
+    x.beginPath(); x.moveTo(sx - 26, cy + e * 1.1); x.lineTo(sx + 26, cy - e * 1.1); x.stroke();
+  }
+  x.restore();
+}
+function verifyScreen(s, verified) {
+  const cx = s.x + s.w / 2, r = s.x + s.w - 40;
+  text("אימות", r, s.y + 112, f(22, 500), P.GoldDeep, "right");
+  let y = para("הכנס את האמה עם הכריכות למסגרת.", r, s.y + 160, f(36, 500, SERIF), P.Ink, 480, 46, "right");
+  y = para("כל האמה, מהמרפק עד כף היד, לרוחב המסגרת. האימות קורה לבד.", r, y + 4, f(20), P.InkSoft, 480, 30, "right");
+  const bx = s.x + 28, by = y + 22, bw = s.w - 56, bh = s.h - (y + 22 - s.y) - 210;
+  x.save(); rr(bx, by, bw, bh, 12); x.clip();
+  const cam = x.createRadialGradient(cx, by + bh * 0.45, 40, cx, by + bh * 0.5, bh * 0.75);
+  cam.addColorStop(0, "#4a3a2e"); cam.addColorStop(1, "#1a1410");
+  x.fillStyle = cam; x.fillRect(bx, by, bw, bh);
+  const gw = bw * 0.88, gh = bh * 0.40, gx = cx - gw / 2, gy = by + bh / 2 - gh / 2;
+  if (!verified) arm(gx + 10, gy + 6, gw - 20, gh - 12);
+  if (verified) {
+    x.fillStyle = P.ChocolateDeep; x.fillRect(bx, by, bw, bh);
+    darkArch(cx, by + bh / 2 - 250, 170, 208);
+    lock(cx, by + bh / 2 - 130, 80, 1);
+    text("הנחת. יום טוב.", cx, by + bh / 2 + 70, f(46, 500, SERIF), P.Cream);
+    text("זוהו 7 כריכות על האמה.", cx, by + bh / 2 + 122, f(24), P.CreamDeep);
+  } else {
+    rr(gx, gy, gw, gh, 14); x.strokeStyle = P.Cream; x.lineWidth = 4; x.stroke();
+    const seen = 5;
+    for (let i = 0; i < 7; i++) {
+      const dx = cx + (3 - i) * 34;
+      dot(dx, by + bh - 96, 11, i < seen ? P.Gold : null, i < seen ? P.Gold : "rgba(246,240,230,0.7)", 3);
+    }
+    text("רואה 5 מתוך 7 כריכות", cx, by + bh - 40, f(26, 600), P.Cream);
+  }
+  x.restore();
+  if (verified) {
+    darkButton(cx, s.y + s.h - 170, s.w - 56, 80, "המשך");
+  } else {
+    para("טיפ: סובב את היד לאור. צל חזק מסתיר כריכות.", r, s.y + s.h - 150, f(21), P.GoldDeep, 480, 30, "right");
+    text("החלף מצלמה", r, s.y + s.h - 66, f(22, 500), P.Muted, "right");
+    text("חזרה", s.x + 40, s.y + s.h - 66, f(22, 500), P.Muted, "left");
+  }
+}
+
+// ---------- screen 4: home with the dot calendar ----------
+function homeScreen(s) {
+  const cx = s.x + s.w / 2, L = s.x + 26, R = s.x + s.w - 26;
+  // top bar: time chip on the right (start in RTL), title in the middle, gear on the left
+  rr(R - 94, s.y + 74, 94, 46, 14); x.fillStyle = P.CreamDeep; x.fill(); x.strokeStyle = P.Sand; x.lineWidth = 2; x.stroke();
+  text("07:24", R - 47, s.y + 105, f(20, 600), P.InkSoft);
+  text("בוקר אור", cx, s.y + 108, f(32, 500, SERIF), P.Ink);
+  dot(L + 26, s.y + 97, 23, P.CreamDeep, P.Sand, 2); dot(L + 26, s.y + 97, 8, null, P.Ink, 3);
+  text("יום רביעי", cx, s.y + 160, f(19, 500), P.GoldDeep);
+  // hero card
+  const hy = s.y + 184, hh = 372;
+  rr(L, hy, R - L, hh, 34); x.fillStyle = P.Cream; x.fill(); x.strokeStyle = P.Gold; x.lineWidth = 2.5; x.stroke();
+  darkArch(cx, hy + 26, 116, 144);
+  lock(cx, hy + 104, 50, 1);
+  text("הנחת. היום שלך.", cx, hy + 222, f(32, 500, SERIF), P.Ink);
+  text("האימות עבר, והטלפון פתוח עד מחר בבוקר.", cx, hy + 262, f(19), P.InkSoft);
+  darkButton(cx, hy + 288, R - L - 44, 62, "אושר להיום");
+  // calendar card
+  const cy0 = hy + hh + 22, ch = 470;
+  rr(L, cy0, R - L, ch, 28); x.fillStyle = P.CreamDeep; x.fill(); x.strokeStyle = P.Sand; x.lineWidth = 2; x.stroke();
+  // header: flame mark, label, value
+  x.save(); x.fillStyle = P.GoldDeep; x.beginPath();
+  const fx = R - 40, fy = cy0 + 52;
+  x.moveTo(fx, fy - 18); x.bezierCurveTo(fx + 14, fy - 4, fx + 12, fy + 14, fx, fy + 16);
+  x.bezierCurveTo(fx - 12, fy + 14, fx - 14, fy - 2, fx - 4, fy - 8); x.closePath(); x.fill(); x.restore();
+  text("הרצף שלך", R - 70, cy0 + 60, f(23, 600), P.Ink, "right");
+  text("23 ימים", L + 24, cy0 + 62, f(30, 500, SERIF), P.GoldDeep, "left");
+  const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+  const colW = (R - L - 40) / 7;
+  const colX = i => R - 20 - colW * (i + 0.5); // Sunday on the right
+  letters.forEach((l, i) => text(l, colX(i), cy0 + 112, f(18, 500), P.Muted));
+  // five weeks: v = verified, m = missed, r = Shabbat, t = today (verified), q = future
+  const weeks = [
+    "vvmvvvr",
+    "vvvvvvr",
+    "vvvvvvr",
+    "vvvvvvr",
+    "vvvtqqq",
+  ];
+  weeks.forEach((wk, w) => {
+    [...wk].forEach((k, i) => {
+      const px = colX(i), py = cy0 + 152 + w * 50;
+      if (k === "v" || k === "t") dot(px, py, 13, P.Gold);
+      else if (k === "m") dot(px, py, 12, null, P.Sand, 3);
+      else if (k === "r") dot(px, py, 6, P.Sand);
+      else dot(px, py, 4, "rgba(226,215,195,0.6)");
+    });
+  });
+  // legend
+  const ly = cy0 + ch - 44;
+  let lx = cx + 150;
+  dot(lx, ly - 7, 9, P.Gold); text("הנחת", lx - 18, ly, f(17, 500), P.Muted, "right");
+  lx -= 112; dot(lx, ly - 7, 5, P.Sand); text("שבת וחג", lx - 14, ly, f(17, 500), P.Muted, "right");
+  lx -= 122; dot(lx, ly - 7, 8, null, P.Sand, 3); text("פוספס", lx - 18, ly, f(17, 500), P.Muted, "right");
+}
+
+// ---------- screen 5: the widget on the home screen ----------
+function widgetScreen(s) {
+  const g = x.createLinearGradient(0, s.y, 0, s.y + s.h);
+  g.addColorStop(0, "#d8c7aa"); g.addColorStop(1, "#ab9171");
+  x.fillStyle = g; x.fillRect(s.x, s.y, s.w, s.h);
+  text("7:31", s.x + 52, s.y + 46, f(22, 600), P.Chocolate, "left");
+  const cx = s.x + s.w / 2;
+  // widget
+  const wx = s.x + 34, wy = s.y + 120, ww = s.w - 68, wh = 300;
+  x.save(); x.shadowColor = "rgba(28,22,18,0.35)"; x.shadowBlur = 30; x.shadowOffsetY = 12;
+  rr(wx, wy, ww, wh, 34); x.fillStyle = P.Chocolate; x.fill(); x.restore();
+  rr(wx, wy, ww, wh, 34); x.strokeStyle = P.Gold; x.lineWidth = 2.5; x.stroke();
+  text("וּקְשַׁרְתָּם", cx, wy + 62, f(22, 500), P.Gold);
+  text("עוד לא הנחת", cx, wy + 136, f(48, 500, SERIF), P.Cream);
+  text("נשארו 2 דחיות  ●●○", cx, wy + 190, f(24), P.Sand);
+  text("רצף: 23 ימים", cx, wy + 248, f(24, 500), P.GoldSoft);
+  // app icons, generic
+  const tones = ["#f1e8d9", "#e9dcc6", "#f5efe4", "#e4d5bd"];
+  for (let r = 0; r < 3; r++) {
+    for (let k = 0; k < 4; k++) {
+      const ix = s.x + 52 + k * 124, iy = wy + wh + 70 + r * 160;
+      rr(ix, iy, 96, 96, 26); x.fillStyle = tones[(r + k) % 4]; x.globalAlpha = 0.72; x.fill(); x.globalAlpha = 1;
+      rr(ix + 18, iy + 116, 60, 10, 5); x.fillStyle = "rgba(43,34,25,0.25)"; x.fill();
+    }
+  }
+  // dock
+  rr(s.x + 30, s.y + s.h - 170, s.w - 60, 130, 40); x.fillStyle = "rgba(246,240,230,0.35)"; x.fill();
+  for (let k = 0; k < 4; k++) {
+    rr(s.x + 62 + k * 120, s.y + s.h - 152, 92, 92, 26); x.fillStyle = tones[k]; x.globalAlpha = 0.8; x.fill(); x.globalAlpha = 1;
+  }
+}
+
+// ---------- the strip ----------
+const FRAMES = [
+  { h: "בבוקר הטלפון נעול.", sub: "נפתח אחרי שמניחים תפילין.", draw: lockScreen },
+  { h: "שבע כריכות, מצלמה חיה.", sub: "בלי גלריה. שום תמונה לא נשמרת.", draw: s => verifyScreen(s, false) },
+  { h: "הנחת? הכול נפתח.", sub: "עד מחר בבוקר.", draw: s => verifyScreen(s, true) },
+  { h: "רצף שרואים.", sub: "שבת וחג לא שוברים אותו.", draw: homeScreen },
+  { h: "גם על המסך הראשי.", sub: "הנחת היום, דחיות ורצף, במבט אחד.", draw: widgetScreen },
+];
+
+function render() {
+  x.fillStyle = P.Cream; x.fillRect(0, 0, W * N, H);
+  // continuous ground band and gold baseline across the whole strip
+  x.fillStyle = P.Chocolate; x.fillRect(0, BASE, W * N, H - BASE);
+  FRAMES.forEach((fr, i) => {
+    const ox = slot(i), cx = ox + W / 2;
+    // the arch behind the phone, standing on the baseline
+    archPath(ox + 120, 440, 840, BASE - 440);
+    x.fillStyle = P.CreamDeep; x.fill();
+    x.strokeStyle = P.Gold; x.lineWidth = 4; x.stroke();
+    text(fr.h, cx, 236, f(84, 500, SERIF), P.Chocolate);
+    text(fr.sub, cx, 322, f(40), P.InkSoft);
+  });
+  x.fillStyle = P.Gold; x.fillRect(0, BASE - 2, W * N, 4);
+  // half-dots on every frame edge: any two frames placed side by side complete a full dot
+  for (let i = 0; i <= N; i++) dot(i * W, BASE, 16, P.Gold);
+  FRAMES.forEach((fr, i) => phone(slot(i), fr.draw));
+}
+// Hebrew reading order: frame 1 sits at the right end of the strip
+function slot(i) { return (N - 1 - i) * W; }
+
+async function boot() {
+  const faces = [new FontFace(SERIF, `url(${window.__FONTS.frl})`), new FontFace(SANS, `url(${window.__FONTS.heebo})`)];
+  for (const ff of faces) { await ff.load(); document.fonts.add(ff); }
+  for (const w of [400, 500, 600]) { await document.fonts.load(`${w} 20px "${SANS}"`); await document.fonts.load(`${w} 20px "${SERIF}"`); }
+  render();
+  window.__slices = () => FRAMES.map((_, i) => {
+    const o = document.createElement("canvas"); o.width = W; o.height = H;
+    o.getContext("2d").drawImage(c, slot(i), 0, W, H, 0, 0, W, H);
+    return o.toDataURL("image/jpeg", 0.92);
+  });
+  window.__preview = () => {
+    const o = document.createElement("canvas"); o.width = 2700; o.height = 960;
+    o.getContext("2d").drawImage(c, 0, 0, 2700, 960);
+    return o.toDataURL("image/jpeg", 0.9);
+  };
+  window.__ready = true;
+}
+boot().catch(e => console.log("BOOT ERR " + e.message));
+</script>
+</body>
+</html>

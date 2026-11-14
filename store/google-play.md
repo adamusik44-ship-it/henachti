@@ -7,7 +7,7 @@
 | `ukshartem.aab` | Testing → Closed testing → Create new release |
 | `icon-512.png` | Store listing → App icon |
 | `feature-graphic.png` | Store listing → Feature graphic |
-| `screenshots/01..04.jpg` | Store listing → Phone screenshots |
+| `screenshots/01..05.jpg` | Store listing → Phone screenshots (one continuous strip, upload in order 01→05; rendered by `_videotools/render_store_strip.mjs` from `store/strip.html`) |
 
 ## מה רק אתה יכול לעשות
 
