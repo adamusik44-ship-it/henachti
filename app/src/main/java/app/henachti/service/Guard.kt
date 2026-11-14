@@ -68,8 +68,9 @@ object Guard {
     }
 
     /** Automatic date and time from the network. Without it the day could simply be moved. */
+    /** Debug builds (screenshots on an emulator whose clock is set by hand) skip this check; release never does. */
     fun autoTimeOn(context: Context): Boolean =
-        Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) == 1
+        BuildConfig.DEBUG || Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME, 1) == 1
 
     fun adbEnabled(context: Context): Boolean =
         Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1

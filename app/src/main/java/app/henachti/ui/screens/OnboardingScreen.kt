@@ -103,6 +103,7 @@ fun OnboardingScreen(
     onRefresh: () -> Unit,
     onDone: () -> Unit,
     onBack: () -> Unit,
+    startStep: Int = 0,
 ) {
     val context = LocalContext.current
     val usageOn = remember(now) { Guard.hasUsageAccess(context) }
@@ -199,7 +200,7 @@ fun OnboardingScreen(
     }
 
     if (firstRun && !armed) {
-        SetupSteps(prefs = prefs, perms = perms, required = required, onArm = arm, onLater = onDone)
+        SetupSteps(prefs = prefs, perms = perms, required = required, onArm = arm, onLater = onDone, startStep = startStep)
     } else {
         PermissionList(perms, withAdmin, required, armed, firstRun, onArm = arm, onDone = onDone, onBack = onBack)
     }
@@ -212,9 +213,10 @@ private fun SetupSteps(
     required: Boolean,
     onArm: () -> Unit,
     onLater: () -> Unit,
+    startStep: Int = 0,
 ) {
     val total = perms.size + 3 // welcome, the permissions, the usual time, arming
-    var step by rememberSaveable { mutableIntStateOf(0) }
+    var step by rememberSaveable { mutableIntStateOf(startStep.coerceIn(0, total - 1)) }
     val last = total - 1
     BackHandler(enabled = step > 0) { step-- }
 

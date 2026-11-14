@@ -113,6 +113,15 @@ class MainActivity : ComponentActivity() {
         val route = entry?.destination?.route
         val firstRun = remember { !prefs.setupDone }
         val start = remember { if (firstRun) ROUTE_ONBOARDING else Tab.HOME.route }
+        // Debug builds only: open a page or a first-run step from adb, for the screenshot run in CI.
+        val debugRoute = remember { if (BuildConfig.DEBUG) intent?.getStringExtra("route") else null }
+        val debugStep = remember { if (BuildConfig.DEBUG) intent?.getIntExtra("step", 0) ?: 0 else 0 }
+        LaunchedEffect(debugRoute) {
+            if (debugRoute != null) {
+                delay(400)
+                runCatching { nav.navigate(debugRoute) }
+            }
+        }
 
         LaunchedEffect(Unit) {
             while (true) {
@@ -144,6 +153,7 @@ class MainActivity : ComponentActivity() {
                         prefs = prefs,
                         now = now,
                         firstRun = start == ROUTE_ONBOARDING && nav.previousBackStackEntry == null,
+                        startStep = debugStep,
                         onRefresh = { refresh() },
                         onDone = {
                             nav.navigate(Tab.HOME.route) {
