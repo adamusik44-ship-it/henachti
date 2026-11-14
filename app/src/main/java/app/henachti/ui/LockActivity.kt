@@ -4,7 +4,10 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import app.henachti.data.Dedications
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
+import app.henachti.domain.IsraelTime
 import app.henachti.domain.LockState
 import app.henachti.domain.TamperReason
 import app.henachti.service.BlockerService
@@ -53,6 +57,11 @@ class LockActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // the lock is a coloured full screen: draw under the bars, with light icons on it
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         prefs = Prefs.get(this)
         policy = DayPolicy(this)
 
@@ -113,6 +122,10 @@ class LockActivity : ComponentActivity() {
 }
 
 
+/**
+ * The lock as a focus screen: wine red, one big sentence, the sun peeking over a hill (its face is
+ * the state), one light pill to verify, and two quiet links. Nothing else.
+ */
 @Composable
 private fun LockScreen(
     state: LockState,
@@ -140,6 +153,7 @@ private fun LockScreen(
         }
     }
 
+    val bg = if (tampered != null) Palette.Coral else Palette.Wine
     val title = when {
         tampered != null -> TamperUi.title(tampered.reason)
         snoozed != null -> "זה נפתח רק אחרי תפילין."
@@ -147,80 +161,73 @@ private fun LockScreen(
     }
     val body = when {
         tampered != null -> TamperUi.body(tampered.reason)
-        snoozed != null ->
-            "דחייה ${snoozed.used} מתוך ${snoozed.max}. הכול פתוח חוץ מההגדרות, חנות האפליקציות והסרת אפליקציות, " +
-                "והן נפתחות אחרי האימות."
-        max == 0 -> "אין דחיות. הדרך היחידה להמשיך היא להניח."
-        snoozeAvailable -> "הטלפון סגור עד שמראים למצלמה את האמה עם הכריכות."
-        else -> "הדחיות של היום נגמרו. הדרך היחידה להמשיך היא להניח."
+        snoozed != null -> "דחייה ${snoozed.used} מתוך ${snoozed.max}. ההגדרות, החנות והסרת אפליקציות נפתחות אחרי האימות."
+        now >= windowEnd -> "הטלפון נפתח אחרי שבע כריכות. השקיעה כבר עברה."
+        else -> "הטלפון נפתח אחרי שבע כריכות. השקיעה ב-${IsraelTime.hhmm(windowEnd)}."
+    }
+    val mood = when {
+        tampered != null -> SunMood.WORRIED
+        snoozed != null -> SunMood.SLEEPY
+        now >= windowEnd -> SunMood.NIGHT
+        else -> SunMood.WAITING
     }
 
     Column(
         Modifier
             .fillMaxSize()
+            .background(bg)
             .systemBarsPadding()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 26.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(28.dp))
-        Eyebrow(hebrewDate)
-        Spacer(Modifier.height(20.dp))
-        Arch(width = 108.dp, height = 132.dp) {
-            Icon(Icons.Outlined.Lock, contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(38.dp))
-        }
         Spacer(Modifier.height(22.dp))
-        Text(title, style = MaterialTheme.typography.displayMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(10.dp))
-        Text(body, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft, textAlign = TextAlign.Center)
+        Text(hebrewDate, style = MaterialTheme.typography.labelMedium, color = Palette.Blush)
+        Spacer(Modifier.height(16.dp))
+        Text(
+            title,
+            style = if (tampered != null) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.displayLarge,
+            color = Palette.Cream,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(body, style = MaterialTheme.typography.bodyLarge, color = Palette.Blush, textAlign = TextAlign.Center)
         if (dedication != null && tampered == null) {
-            Spacer(Modifier.height(8.dp))
-            Text("ההנחה של היום מוקדשת $dedication", style = MaterialTheme.typography.bodySmall, color = Palette.GoldText, textAlign = TextAlign.Center)
-        }
-
-        if (tampered == null) {
-            Spacer(Modifier.height(22.dp))
-            if (snoozed != null) {
-                CountdownRing(until = snoozed.until, total = BlockerService.SNOOZE_MS, diameter = 112.dp)
-            } else {
-                DayArc(start = windowStart, end = windowEnd, now = now, modifier = Modifier.padding(horizontal = 8.dp))
-            }
+            Spacer(Modifier.height(6.dp))
+            Text("ההנחה של היום מוקדשת $dedication", style = MaterialTheme.typography.bodySmall, color = Palette.Blush, textAlign = TextAlign.Center)
         }
 
         Spacer(Modifier.weight(1f))
+        if (snoozed != null) {
+            CountdownRing(until = snoozed.until, total = BlockerService.SNOOZE_MS, diameter = 150.dp, dark = true)
+            Spacer(Modifier.height(16.dp))
+        } else {
+            SunMascot(mood, Modifier.size(width = 270.dp, height = 190.dp))
+        }
 
         if (tampered != null) {
-            GoldButton(TamperUi.action(tampered.reason), { onFix(tampered.reason) }, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
+            GoldButton(
+                TamperUi.action(tampered.reason), { onFix(tampered.reason) }, Modifier.fillMaxWidth(),
+                background = Palette.Cream, content = Palette.Ink,
+            )
         } else {
-            GoldButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
+            GoldButton("הנחתי. אמת במצלמה", onVerify, Modifier.fillMaxWidth(), background = Palette.Cream, content = Palette.Wine)
             if (snoozed == null && max > 0) {
-                GhostButton(
-                    text = if (snoozeAvailable) "עוד חצי שעה" else "הדחיות נגמרו להיום",
-                    onClick = onSnooze,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = snoozeAvailable,
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SnoozeDots(left = left, max = max)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        when (left) {
-                            0 -> "לא נשארו דחיות"
-                            1 -> "נשארה דחייה אחת"
-                            else -> "נשארו $left דחיות"
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Palette.Muted,
-                    )
+                TextButton(onClick = onSnooze, enabled = snoozeAvailable, modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (snoozeAvailable) "עוד חצי שעה" else "הדחיות נגמרו להיום",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Palette.Cream,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        SnoozeDots(left = left, max = max)
+                    }
                 }
-                Spacer(Modifier.height(4.dp))
             }
         }
         TextButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) {
-            Text("למסך הבית", color = Palette.Muted, style = MaterialTheme.typography.labelLarge)
+            Text("למסך הבית", color = Palette.Blush, style = MaterialTheme.typography.labelLarge)
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(18.dp))
     }
 }

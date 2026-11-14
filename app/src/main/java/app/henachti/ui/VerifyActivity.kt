@@ -339,35 +339,41 @@ class VerifyActivity : ComponentActivity() {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Palette.ChocolateDeep.copy(alpha = if (unlocked) 0.88f else 0.78f))
+                .background(if (unlocked) Palette.Teal else Palette.ChocolateDeep.copy(alpha = 0.85f))
         ) {
             Column(
                 Modifier
                     .align(Alignment.Center)
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (unlocked) {
-                    // the moment of the day: the arch, and the lock inside it opening
-                    Arch(width = 112.dp, height = 138.dp) {
-                        OpeningLock(open = true, modifier = Modifier.size(52.dp))
-                    }
-                    Spacer(Modifier.height(20.dp))
-                }
                 Text(
-                    title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Palette.Paper,
+                    if (unlocked) title.replace(". ", ".
+") else title,
+                    style = if (unlocked) MaterialTheme.typography.displayLarge else MaterialTheme.typography.headlineMedium,
+                    color = Palette.Cream,
                     textAlign = TextAlign.Center,
                 )
+                if (unlocked) {
+                    // the happiest moment in the app: all seven windings, and the sun laughing
+                    Spacer(Modifier.height(14.dp))
+                    WindingDots(WindingDetector.REQUIRED)
+                }
                 if (body.isNotBlank()) {
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         body,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Palette.PaperDeep,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = if (unlocked) Palette.Lime else Palette.PaperDeep,
                         textAlign = TextAlign.Center,
                     )
+                }
+                if (unlocked) {
+                    Spacer(Modifier.height(12.dp))
+                    SunMascot(SunMood.HAPPY, Modifier.size(width = 230.dp, height = 170.dp), hill = Palette.TealSoft)
+                } else {
+                    Spacer(Modifier.height(12.dp))
+                    SunMascot(SunMood.WORRIED, Modifier.size(width = 180.dp, height = 130.dp), hill = null)
                 }
             }
         }

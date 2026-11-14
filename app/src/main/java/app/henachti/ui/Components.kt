@@ -51,8 +51,9 @@ import app.henachti.R
 
 /** The arch: a rounded top on a flat base. The app's one recurring shape. */
 val ArchShape = RoundedCornerShape(topStartPercent = 50, topEndPercent = 50, bottomStartPercent = 0, bottomEndPercent = 0)
-val CardShape = RoundedCornerShape(22.dp)
-val ButtonShape = RoundedCornerShape(16.dp)
+val CardShape = RoundedCornerShape(24.dp)
+/** Every button is a full pill. */
+val ButtonShape = RoundedCornerShape(percent = 50)
 
 /** Drawable for a prayer-card icon id from the JSON. */
 @Composable
@@ -140,13 +141,12 @@ fun Arch(
     dark: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val fill = if (dark) Brush.verticalGradient(listOf(Palette.ChocolateDeep, Palette.Chocolate))
-    else Brush.verticalGradient(listOf(Palette.Cream, Palette.CreamDeep))
+    // flat colour, no gradient
     Box(
         modifier
             .size(width, height)
             .clip(ArchShape)
-            .background(fill)
+            .background(if (dark) Palette.Chocolate else Palette.CreamDeep)
             .border(1.5.dp, Palette.Gold, ArchShape),
         contentAlignment = Alignment.Center,
     ) { content() }
@@ -189,21 +189,29 @@ fun DarkButton(
 fun InkButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) =
     DarkButton(text, onClick, modifier, enabled)
 
+/** The main action: a dark ink pill. On dark or coloured screens pass light colours. */
 @Composable
-fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    // one flat accent colour, no metallic gradient
+fun GoldButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    background: Color = Palette.Ink,
+    content: Color = Palette.Cream,
+) {
     Box(
         modifier
             .height(56.dp)
             .clip(ButtonShape)
-            .background(if (enabled) Palette.Gold else Palette.Sand)
+            // one flat colour per button, no gradient
+            .background(if (enabled) background else Palette.Sand)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) Palette.ChocolateDeep else Palette.Muted,
+            color = if (enabled) content else Palette.Muted,
         )
     }
 }
@@ -392,18 +400,22 @@ enum class Tab(val route: String, val label: String) {
 
 @Composable
 fun BottomNav(current: String?, onSelect: (Tab) -> Unit) {
-    // navigationBarsPadding keeps the tabs above the phone's own back/home/recents bar
-    Column(
+    // a floating white pill above the phone's own navigation bar
+    Box(
         Modifier
             .fillMaxWidth()
             .background(Palette.Cream)
             .navigationBarsPadding()
+            .padding(horizontal = 48.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Hairline()
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .clip(RoundedCornerShape(percent = 50))
+                .background(Color.White)
+                .border(1.dp, Palette.Sand, RoundedCornerShape(percent = 50))
+                .padding(vertical = 4.dp),
         ) {
             Tab.entries.forEach { tab ->
                 val on = current == tab.route
@@ -415,7 +427,7 @@ fun BottomNav(current: String?, onSelect: (Tab) -> Unit) {
 
 @Composable
 private fun NavItem(tab: Tab, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val tint = if (on) Palette.GoldDeep else Palette.Muted
+    val tint = if (on) Palette.Ink else Palette.Muted
     Column(
         modifier
             .clip(RoundedCornerShape(12.dp))

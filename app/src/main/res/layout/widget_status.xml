@@ -14,7 +14,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="וּקְשַׁרְתָּם"
-        android:textColor="#C9A75C"
+        android:textColor="#FFC94A"
         android:textSize="12sp" />
 
     <TextView
@@ -26,7 +26,7 @@
         android:gravity="center"
         android:maxLines="1"
         android:text="הנחת היום"
-        android:textColor="#F6F0E6"
+        android:textColor="#FBF6E9"
         android:textSize="21sp" />
 
     <TextView
@@ -47,6 +47,6 @@
         android:layout_marginTop="6dp"
         android:gravity="center"
         android:text="רצף: 12 ימים"
-        android:textColor="#E2CC8E"
+        android:textColor="#FFE08A"
         android:textSize="13sp" />
 </LinearLayout>
