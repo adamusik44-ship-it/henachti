@@ -47,14 +47,14 @@ function phone(ox, oy, m) {
   const ax = sx + pad, aw = sw - pad * 2, ah = 196 * S;
   sky(ax, y, aw, ah, m.frac, m.hours);
   const by = y + ah - 14 * S;
-  if (m.center === "count") { T(m.big, cx, by - 22 * S, f(48, 500, "FRL"), P.Cream); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
+  if (m.center === "count") { T(m.big, cx, by - 22 * S, f(40, 500, "Heebo"), P.Cream); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
   else if (m.center === "check") { dot(cx, by - 58 * S, 30 * S, null, P.Gold, 2 * S); x.strokeStyle = P.Gold; x.lineWidth = 3.5 * S; x.lineCap = "round"; x.beginPath(); x.moveTo(cx + 11 * S, by - 65 * S); x.lineTo(cx - 2 * S, by - 52 * S); x.lineTo(cx - 11 * S, by - 60 * S); x.stroke(); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
   else if (m.center === "candle") { candle(cx, by - 46 * S, 44 * S); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
   y += ah;
   T("אפשר להניח מ-" + m.mish, sx + sw - pad, y + 13 * S, f(13, 500), "rgba(226,215,195,0.8)", "right");
   T("שקיעה " + m.sunset, sx + pad, y + 13 * S, f(13, 500), "rgba(226,215,195,0.8)", "left");
   y += 16 * S + 22 * S + 22 * S;
-  T(m.sentence, cx, y, f(22, 500, "FRL"), P.Cream);
+  T(m.sentence, cx, y, f(22, 600, "Heebo"), P.Cream);
   if (m.button) { const bh = 56 * S, bt = y + 20 * S; rr(ax, bt, aw, bh, 16 * S); x.fillStyle = P.Gold; x.fill(); T(m.button, cx, bt + bh / 2 + 6 * S, f(16, 600), P.ChocolateDeep); y = bt + bh; }
   if (m.dots) {
     const ry = y + 24 * S; let px = cx + 108 * S;
@@ -64,8 +64,8 @@ function phone(ox, oy, m) {
   // ---- page below: the streak as a sentence, then the dot calendar, then rows
   const L = sx + 24 * S, R = sx + sw - 24 * S;
   let yy = sy + panelH + 26 * S + 22 * S;
-  T(`${m.streak} ימים ברצף`, cx, yy, f(22, 500, "FRL"), P.Ink);
-  T(`${m.count} אימותים מאז ההתקנה. שבת וחג לא שוברים את הרצף.`, cx, yy + 22 * S, f(13), P.Muted);
+  T(`${m.streak} ימים ברצף`, R, yy, f(22, 600, "Heebo"), P.Ink, "right");
+  T(`${m.count} אימותים מאז ההתקנה. שבת וחג לא שוברים את הרצף.`, R, yy + 22 * S, f(12), P.Muted, "right");
   const colW = (R - L) / 7, colX = i => R - colW * (i + .5);
   ["א", "ב", "ג", "ד", "ה", "ו", "ש"].forEach((l, i) => T(l, colX(i), yy + 52 * S, f(12, 500), P.Muted));
   ["vvmvvvr", "vvvvvvr", "vvvvvvr", "vvvvvvr", m.lastWeek].forEach((wk, w) => [...wk].forEach((k, i) => {
@@ -84,7 +84,7 @@ function phone(ox, oy, m) {
   });
   x.restore();
   dot(ox + pw / 2, oy + 40, 8, "#0d0a08");
-  T(m.label, ox + pw / 2, oy + ph + 80, f(26, 500, "FRL"), P.Chocolate);
+  T(m.label, ox + pw / 2, oy + ph + 80, f(24, 600, "Heebo"), P.Chocolate);
   T(m.sub, ox + pw / 2, oy + ph + 120, f(15), P.InkSoft);
 }
 
