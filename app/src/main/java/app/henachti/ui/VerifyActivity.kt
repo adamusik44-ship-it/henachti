@@ -348,8 +348,7 @@ class VerifyActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    if (unlocked) title.replace(". ", ".
-") else title,
+                    if (unlocked) title.replace(". ", ".\n") else title,
                     style = if (unlocked) MaterialTheme.typography.displayLarge else MaterialTheme.typography.headlineMedium,
                     color = Palette.Cream,
                     textAlign = TextAlign.Center,
