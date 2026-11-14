@@ -56,6 +56,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -215,9 +217,7 @@ class VerifyActivity : ComponentActivity() {
                 .systemBarsPadding()
                 .padding(horizontal = 24.dp)
         ) {
-            Spacer(Modifier.height(24.dp))
-            Eyebrow("אימות")
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(28.dp))
             Text(
                 "הכנס את האמה עם הכריכות למסגרת.",
                 style = MaterialTheme.typography.headlineMedium,
@@ -308,7 +308,7 @@ class VerifyActivity : ComponentActivity() {
                         Text(
                             "טיפ: ${TIPS[tip]}",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Palette.Bronze,
+                            color = Palette.GoldText,
                         )
                         Spacer(Modifier.height(6.dp))
                     }
@@ -376,7 +376,10 @@ class VerifyActivity : ComponentActivity() {
     /** Seven dots, one per winding, filling in gold as the detector sees them. */
     @Composable
     private fun WindingDots(bands: Int) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.clearAndSetSemantics { contentDescription = "זוהו $bands מתוך ${WindingDetector.REQUIRED} כריכות" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             repeat(WindingDetector.REQUIRED) { i ->
                 val on = i < bands
                 Box(
@@ -457,7 +460,7 @@ class VerifyActivity : ComponentActivity() {
                     p.unbindAll()
                     p.bindToLifecycle(this@VerifyActivity, selector, preview, analysis)
                 } catch (e: Exception) {
-                    phase.value = Phase.Failed("המצלמה לא נפתחה: ${e.message}")
+                    phase.value = Phase.Failed("המצלמה לא נפתחה. סגור אפליקציות אחרות שמשתמשות במצלמה, ונסה שוב.")
                 }
             }, ContextCompat.getMainExecutor(context))
 

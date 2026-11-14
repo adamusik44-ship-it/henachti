@@ -87,7 +87,7 @@ fun DedicationScreen(
                 Spacer(Modifier.height(14.dp))
                 SoftCard(Modifier.fillMaxWidth(), gold = true) {
                     Column {
-                        Text("ההקדשה הפעילה", style = MaterialTheme.typography.labelMedium, color = Palette.GoldDeep)
+                        Text("ההקדשה הפעילה", style = MaterialTheme.typography.labelMedium, color = Palette.GoldText)
                         Spacer(Modifier.height(4.dp))
                         Text(label, style = MaterialTheme.typography.titleLarge)
                         TextButton(onClick = {

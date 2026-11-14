@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -73,7 +74,7 @@ fun iconPainter(name: String): Painter = painterResource(
 
 @Composable
 fun Eyebrow(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier = modifier, color = Palette.GoldDeep, style = MaterialTheme.typography.labelMedium)
+    Text(text, modifier = modifier, color = Palette.GoldText, style = MaterialTheme.typography.labelMedium)
 }
 
 @Composable
@@ -120,7 +121,7 @@ fun TopBar(
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
             if (!subtitle.isNullOrBlank()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Palette.GoldDeep)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Palette.GoldText)
             }
         }
         Box(Modifier.width(72.dp), contentAlignment = Alignment.CenterEnd) {
@@ -196,7 +197,7 @@ fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
             .height(56.dp)
             .clip(ButtonShape)
             .background(if (enabled) Palette.Gold else Palette.Sand)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -262,7 +263,7 @@ fun StatRow(icon: Painter, label: String, value: String, dot: Color? = null) {
                 )
                 Spacer(Modifier.width(10.dp))
             }
-            Text(value, style = MaterialTheme.typography.titleLarge, color = Palette.GoldDeep)
+            Text(value, style = MaterialTheme.typography.titleLarge, color = Palette.GoldText)
         }
     }
 }
@@ -429,6 +430,36 @@ private fun NavItem(tab: Tab, on: Boolean, modifier: Modifier, onClick: () -> Un
         }
         Spacer(Modifier.height(2.dp))
         Text(tab.label, style = MaterialTheme.typography.labelMedium, color = tint)
+    }
+}
+
+/**
+ * A plain row of a page, no card: a title, one line under it and a chevron, with an optional
+ * status dot. Rows are separated by hairlines by the caller.
+ */
+@Composable
+fun SectionRow(title: String, subtitle: String, onClick: () -> Unit, dot: Color? = null) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (dot != null) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(dot)
+            )
+            Spacer(Modifier.width(12.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = Palette.Muted)
     }
 }
 

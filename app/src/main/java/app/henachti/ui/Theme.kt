@@ -29,9 +29,12 @@ object Palette {
     val Gold = Color(0xFFC9A75C)
     val GoldSoft = Color(0xFFE2CC8E)
     val GoldDeep = Color(0xFFA8863F)
+    /** Gold for text on cream: 4.9:1. GoldDeep stays for icons, lines and large numerals. */
+    val GoldText = Color(0xFF7F6429)
     val Ink = Color(0xFF2A2420)
     val InkSoft = Color(0xFF5B5248)
-    val Muted = Color(0xFF8C8172)
+    // 5:1 on Cream, 4.6:1 on CreamDeep (the old 8C8172 was 3.4:1 and failed for small text)
+    val Muted = Color(0xFF6E6458)
     val Success = Color(0xFF3E8E5E)
     val Danger = Color(0xFF9B3B2E)
 
@@ -71,8 +74,8 @@ private val HenachtiTypography = Typography(
     bodyMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.sp),
     bodySmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
     labelLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
-    labelMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp, letterSpacing = 0.4.sp),
-    labelSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp),
+    labelMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 18.sp),
+    labelSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
 )
 
 /** Reading style for prayer text: serif, large, generous leading. */

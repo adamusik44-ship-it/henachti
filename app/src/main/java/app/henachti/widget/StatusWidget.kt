@@ -14,7 +14,7 @@ import app.henachti.domain.IsraelTime
 import app.henachti.domain.LockState
 import app.henachti.domain.UnlockReason
 import app.henachti.ui.MainActivity
-import app.henachti.ui.restDayTitle
+import app.henachti.ui.restDayGreeting
 
 /**
  * Home-screen widget: today's status ("הנחת היום" or "עוד לא הנחת"), the snoozes left as dots,
@@ -61,11 +61,13 @@ class StatusWidget : AppWidgetProvider() {
         private fun texts(policy: DayPolicy, state: LockState): Pair<String, String> = when (state) {
             is LockState.Unlocked -> when (state.reason) {
                 UnlockReason.VERIFIED -> "הנחת היום" to "הטלפון פתוח עד מחר בבוקר"
-                UnlockReason.NO_TEFILLIN_DAY -> restDayTitle(policy.noTefillinReason(state.day)) to "אין הנחה היום"
+                UnlockReason.NO_TEFILLIN_DAY -> restDayGreeting(
+                    policy.noTefillinReason(state.day), afterSunset = System.currentTimeMillis() >= policy.sunset(state.day),
+                ) to "אין הנחה היום"
                 UnlockReason.BEFORE_START -> "עוד לא הנחת" to "המנעול נדרך ב-${IsraelTime.hhmm(policy.lockStart(state.day))}"
                 UnlockReason.AFTER_SUNSET -> "השמש שקעה" to "מחר בבוקר מתחילים נקי"
                 UnlockReason.SHABBAT_BEGAN -> "שבת שלום" to "המנעול נח עד מוצאי שבת"
-                UnlockReason.SETUP_INCOMPLETE -> "המנעול לא דרוך" to "כמה מתגים, ומכאן הכול לבד"
+                UnlockReason.SETUP_INCOMPLETE -> "המנעול לא דרוך" to "בלי דריכה הטלפון לא ננעל"
             }
             is LockState.Locked -> "עוד לא הנחת" to snoozeLine(state.snoozesLeft, state.snoozesPerDay)
             is LockState.Snoozed -> "בדחייה עד ${IsraelTime.hhmm(state.until)}" to snoozeLine(state.max - state.used, state.max)

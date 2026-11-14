@@ -174,7 +174,7 @@ private fun LockScreen(
         Text(body, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft, textAlign = TextAlign.Center)
         if (dedication != null && tampered == null) {
             Spacer(Modifier.height(8.dp))
-            Text("ההנחה של היום מוקדשת $dedication", style = MaterialTheme.typography.bodySmall, color = Palette.GoldDeep, textAlign = TextAlign.Center)
+            Text("ההנחה של היום מוקדשת $dedication", style = MaterialTheme.typography.bodySmall, color = Palette.GoldText, textAlign = TextAlign.Center)
         }
 
         if (tampered == null) {

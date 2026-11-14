@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -54,10 +56,9 @@ import app.henachti.domain.IsraelTime
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
 import app.henachti.service.findActivity
-import app.henachti.ui.Arch
-import app.henachti.ui.Eyebrow
 import app.henachti.ui.GoldButton
 import app.henachti.ui.HenachtiSwitch
+import app.henachti.ui.OpeningLock
 import app.henachti.ui.Palette
 import app.henachti.ui.SoftCard
 import app.henachti.ui.StepBar
@@ -224,7 +225,7 @@ private fun SetupSteps(
     ) {
         Spacer(Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("צעד ${step + 1} מתוך $total", style = MaterialTheme.typography.labelMedium, color = Palette.GoldDeep)
+            Text("צעד ${step + 1} מתוך $total", style = MaterialTheme.typography.labelMedium, color = Palette.GoldText)
             Spacer(Modifier.weight(1f))
             if (step > 0) {
                 TextButton(onClick = { step-- }) { Text("חזרה", color = Palette.Muted) }
@@ -277,7 +278,7 @@ private fun SetupSteps(
                     val missing = perms.indexOfFirst { it.required && !it.on }
                     if (missing >= 0) {
                         TextButton(onClick = { step = missing + 1 }, modifier = Modifier.fillMaxWidth()) {
-                            Text("חזרה להרשאה שחסרה", color = Palette.GoldDeep)
+                            Text("חזרה להרשאה שחסרה", color = Palette.GoldText)
                         }
                     }
                 }
@@ -293,22 +294,23 @@ private fun SetupSteps(
 @Composable
 private fun WelcomePage() {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Arch(width = 116.dp, height = 144.dp) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(painterResource(R.drawable.ic_tefillin), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(40.dp))
-                Spacer(Modifier.height(8.dp))
-                Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
-            }
+        // show tomorrow morning instead of describing it: locked, seven windings, open
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            MorningFrame("בבוקר: נעול") { OpeningLock(open = false, modifier = Modifier.size(40.dp)) }
+            Spacer(Modifier.width(12.dp))
+            MorningFrame("שבע כריכות") { SevenDots() }
+            Spacer(Modifier.width(12.dp))
+            MorningFrame("פתוח עד מחר") { OpeningLock(open = true, modifier = Modifier.size(40.dp)) }
         }
-        Spacer(Modifier.height(26.dp))
+        Spacer(Modifier.height(28.dp))
         Text(
-            "כמה צעדים קצרים, ומכאן הכול עובד לבד.",
+            "מחר בבוקר הטלפון ייפתח רק אחרי שבע כריכות.",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "בכל צעד הרשאה אחת, ומשפט אחד למה צריך אותה. בסוף בוחרים שעה ודורכים את המנעול. " +
+            "בכל צעד הרשאה אחת ומשפט אחד למה. בסוף בוחרים שעה ודורכים. " +
                 "הכול נשאר בטלפון, בלי שרת ובלי חשבון.",
             style = MaterialTheme.typography.bodyLarge,
             color = Palette.InkSoft,
@@ -317,14 +319,54 @@ private fun WelcomePage() {
     }
 }
 
+/** A small phone screen for the welcome strip. */
+@Composable
+private fun MorningFrame(caption: String, content: @Composable () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier
+                .size(width = 84.dp, height = 116.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Palette.Chocolate)
+                .border(1.5.dp, Palette.Gold, RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center,
+        ) { content() }
+        Spacer(Modifier.height(8.dp))
+        Text(caption, style = MaterialTheme.typography.labelMedium, color = Palette.InkSoft)
+    }
+}
+
+@Composable
+private fun SevenDots() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        listOf(4, 3).forEach { n ->
+            Row {
+                repeat(n) {
+                    Box(
+                        Modifier
+                            .padding(3.dp)
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(Palette.Gold)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PermPage(p: Perm) {
     Column(Modifier.fillMaxWidth()) {
-        Eyebrow(if (p.required) "חובה בשביל המנעול" else "מומלץ")
-        Spacer(Modifier.height(8.dp))
         Text(p.title, style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(10.dp))
         Text(p.why, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            if (p.required) "חובה, בלי זה המנעול לא עובד." else "מומלץ. אפשר לדלג ולהדליק אחר כך מההגדרות.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Palette.GoldText,
+        )
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatusMark(p.on)
@@ -354,8 +396,6 @@ private fun TimePage(prefs: Prefs) {
     var chosen by remember { mutableIntStateOf(prefs.lockStartMinutes) }
 
     Column(Modifier.fillMaxWidth()) {
-        Eyebrow("שאלה אחת")
-        Spacer(Modifier.height(8.dp))
         Text("מתי אתה מניח בדרך כלל?", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(10.dp))
         Text(
@@ -390,7 +430,7 @@ private fun TimePage(prefs: Prefs) {
             Text(
                 "כרגע: %02d:%02d, כפי שנבחר בהגדרות.".format(java.util.Locale.US, chosen / 60, chosen % 60),
                 style = MaterialTheme.typography.bodySmall,
-                color = Palette.GoldDeep,
+                color = Palette.GoldText,
             )
         }
     }
@@ -399,8 +439,6 @@ private fun TimePage(prefs: Prefs) {
 @Composable
 private fun ArmPage(perms: List<Perm>, required: Boolean) {
     Column(Modifier.fillMaxWidth()) {
-        Eyebrow("הצעד האחרון")
-        Spacer(Modifier.height(8.dp))
         Text(if (required) "הכול מוכן." else "כמעט מוכן.", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(10.dp))
         Text(
@@ -479,7 +517,7 @@ private fun PermissionList(
         TopBar(if (firstRun) "לפני שמתחילים" else "הרשאות ומנעול", onBack = if (firstRun) null else onBack)
         Column(Modifier.padding(horizontal = 20.dp)) {
             Text(
-                if (withAdmin) "שישה מתגים, ומכאן הכול עובד לבד." else "חמישה מתגים, ומכאן הכול עובד לבד.",
+                if (withAdmin) "שישה מתגים, ומחר בבוקר המנעול עובד." else "חמישה מתגים, ומחר בבוקר המנעול עובד.",
                 style = MaterialTheme.typography.headlineSmall,
             )
             Spacer(Modifier.height(6.dp))
@@ -497,7 +535,7 @@ private fun PermissionList(
                 if (!required) {
                     Text(
                         if (withAdmin) "כשהשלושה הראשונים דלוקים, הכפתור נפתח." else "כשהשניים הראשונים דלוקים, הכפתור נפתח.",
-                        style = MaterialTheme.typography.bodySmall, color = Palette.GoldDeep,
+                        style = MaterialTheme.typography.bodySmall, color = Palette.GoldText,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(8.dp))

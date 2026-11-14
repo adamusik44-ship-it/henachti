@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -89,6 +91,14 @@ fun restDayTitle(reason: String?): String = when (reason) {
     else -> "יום מנוחה"
 }
 
+/** The same greeting once the day itself has ended at sunset: Shabbat is out, the festival is over. */
+fun restDayGreeting(reason: String?, afterSunset: Boolean): String =
+    if (!afterSunset) restDayTitle(reason) else when (reason) {
+        "שבת" -> "שבוע טוב"
+        "יום טוב" -> "מוצאי חג"
+        else -> restDayTitle(reason)
+    }
+
 /**
  * The tefillin window of the day as an arc: from misheyakir (right, where Hebrew starts)
  * to sunset (left). The gold part is the time that has passed, the dot is "now".
@@ -131,7 +141,7 @@ fun DayArc(start: Long, end: Long, now: Long, modifier: Modifier = Modifier) {
             drawCircle(Palette.ChocolateDeep, dot * 0.42f, p)
         }
         Row(Modifier.fillMaxWidth()) {
-            Text("מ-${IsraelTime.hhmm(start)}", style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+            Text("אפשר להניח מ-${IsraelTime.hhmm(start)}", style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
             Spacer(Modifier.weight(1f))
             Text("שקיעה ${IsraelTime.hhmm(end)}", style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
         }
@@ -140,7 +150,7 @@ fun DayArc(start: Long, end: Long, now: Long, modifier: Modifier = Modifier) {
         Text(
             if (left > 60_000L) "עוד ${remainingText(left)} עד השקיעה" else "השקיעה עברה",
             style = MaterialTheme.typography.titleSmall,
-            color = Palette.GoldDeep,
+            color = Palette.GoldText,
             textAlign = TextAlign.Center,
         )
     }
@@ -149,7 +159,10 @@ fun DayArc(start: Long, end: Long, now: Long, modifier: Modifier = Modifier) {
 /** Snoozes as dots: full = still available, empty ring = used. */
 @Composable
 fun SnoozeDots(left: Int, max: Int, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier.clearAndSetSemantics { contentDescription = "נשארו $left מתוך $max דחיות" },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         repeat(max) { i ->
             val full = i < left
             Box(
@@ -296,24 +309,21 @@ fun StreakCalendar(policy: DayPolicy, prefs: Prefs, now: Long, modifier: Modifie
         }
     }
 
-    SoftCard(modifier.fillMaxWidth()) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "$streak",
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 46.sp, lineHeight = 50.sp),
-                    color = Palette.GoldDeep,
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(if (streak == 1) "יום ברצף" else "ימים ברצף", style = MaterialTheme.typography.titleMedium)
-                    Text("שבת וחג לא שוברים את הרצף", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("${prefs.verifiedCount}", style = MaterialTheme.typography.titleLarge, color = Palette.Ink)
-                    Text("אימותים", style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
-                }
-            }
+    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                if (streak == 1) "יום אחד ברצף" else "$streak ימים ברצף",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Palette.Ink,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "${prefs.verifiedCount} אימותים מאז ההתקנה. שבת וחג לא שוברים את הרצף.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.Muted,
+                textAlign = TextAlign.Center,
+            )
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth()) {
                 listOf("א", "ב", "ג", "ד", "ה", "ו", "ש").forEach { letter ->
@@ -365,7 +375,7 @@ private fun DayDot(kind: DayKind) {
             Modifier
                 .size(14.dp)
                 .clip(CircleShape)
-                .border(1.5.dp, Palette.Sand, CircleShape)
+                .border(1.5.dp, Palette.Muted, CircleShape)
         )
         DayKind.TODAY -> Box(
             Modifier
@@ -409,8 +419,6 @@ fun MilestoneCard(streak: Int, seen: Int, onDismiss: (Int) -> Unit, modifier: Mo
             .padding(horizontal = 20.dp, vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("ציון דרך", style = MaterialTheme.typography.labelMedium, color = Palette.GoldSoft)
-        Spacer(Modifier.height(6.dp))
         Text(reached.second, style = MaterialTheme.typography.headlineSmall, color = Palette.Cream, textAlign = TextAlign.Center)
         Spacer(Modifier.height(4.dp))
         Text(
