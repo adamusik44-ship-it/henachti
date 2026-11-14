@@ -70,7 +70,7 @@ fun DedicationScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Arch(width = 88.dp, height = 106.dp) {
-                    Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(34.dp))
+                    Icon(painterResource(R.drawable.ic_candle), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(34.dp))
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(

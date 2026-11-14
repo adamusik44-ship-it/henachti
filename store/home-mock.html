@@ -32,7 +32,7 @@ function sky(ax, ay, aw, ah, frac, hours) {
   else dot(px, py, sun * .8, null, P.Gold, 2 * S);
 }
 
-function goldBtn(cx, py, w, label) { const h = 56 * S; rr(cx - w / 2, py, w, h, 16 * S); const g = x.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0); g.addColorStop(0, P.GoldSoft); g.addColorStop(.5, P.Gold); g.addColorStop(1, P.GoldDeep); x.fillStyle = g; x.fill(); T(label, cx, py + h / 2 + 6 * S, f(16, 600), P.ChocolateDeep); return py + h; }
+function goldBtn(cx, py, w, label) { const h = 56 * S; rr(cx - w / 2, py, w, h, 16 * S); x.fillStyle = P.Gold; x.fill(); T(label, cx, py + h / 2 + 6 * S, f(16, 600), P.ChocolateDeep); return py + h; }
 
 function phone(ox, oy, m) {
   const pw = 600, ph = 1240;

@@ -190,13 +190,12 @@ fun InkButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
 
 @Composable
 fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    val brush = if (enabled) Brush.horizontalGradient(listOf(Palette.GoldDeep, Palette.Gold, Palette.GoldSoft))
-    else Brush.horizontalGradient(listOf(Palette.Sand, Palette.Sand))
+    // one flat accent colour, no metallic gradient
     Box(
         modifier
             .height(56.dp)
             .clip(ButtonShape)
-            .background(brush)
+            .background(if (enabled) Palette.Gold else Palette.Sand)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

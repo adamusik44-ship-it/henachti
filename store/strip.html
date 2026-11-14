@@ -73,7 +73,7 @@ function goldGrad(px, w) {
   return g;
 }
 function goldButton(cx, py, w, h, label) {
-  rr(cx - w / 2, py, w, h, 24); x.fillStyle = goldGrad(cx - w / 2, w); x.fill();
+  rr(cx - w / 2, py, w, h, 24); x.fillStyle = P.Gold; x.fill();
   text(label, cx, py + h / 2 + 10, f(28, 600), P.ChocolateDeep);
 }
 function ghostButton(cx, py, w, h, label) {

@@ -249,12 +249,18 @@ private fun SetupSteps(
         }
 
         Spacer(Modifier.height(12.dp))
+        // every button says where it leads, never a bare "next"
+        val toNext = when {
+            step + 1 <= perms.size -> "להרשאה הבאה"
+            step + 1 == last - 1 -> "לבחירת השעה"
+            else -> "לדריכת המנעול"
+        }
         when {
-            step == 0 -> GoldButton("מתחילים", { step++ }, Modifier.fillMaxWidth())
+            step == 0 -> GoldButton("להרשאה הראשונה", { step++ }, Modifier.fillMaxWidth())
             step <= perms.size -> {
                 val p = perms[step - 1]
                 if (p.on) {
-                    GoldButton("הבא", { step++ }, Modifier.fillMaxWidth())
+                    GoldButton(toNext, { step++ }, Modifier.fillMaxWidth())
                 } else {
                     GoldButton(p.action, p.open, Modifier.fillMaxWidth())
                     if (!p.required) {
@@ -264,7 +270,7 @@ private fun SetupSteps(
                     }
                 }
             }
-            step == last - 1 -> GoldButton("הבא", { step++ }, Modifier.fillMaxWidth())
+            step == last - 1 -> GoldButton(toNext, { step++ }, Modifier.fillMaxWidth())
             else -> {
                 GoldButton("דרוך את המנעול", onArm, Modifier.fillMaxWidth(), enabled = required)
                 if (!required) {
@@ -289,7 +295,7 @@ private fun WelcomePage() {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Arch(width = 116.dp, height = 144.dp) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(38.dp))
+                Icon(painterResource(R.drawable.ic_tefillin), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(40.dp))
                 Spacer(Modifier.height(8.dp))
                 Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
             }
