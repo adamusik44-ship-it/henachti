@@ -66,6 +66,15 @@ def find_tool(name):
     return shutil.which(name)
 
 
+def attr_bool(text, name):
+    """True/False for a boolean manifest attribute in aapt2 xmltree output, None when absent."""
+    m = re.search(name + r"\(0x[0-9a-f]+\)=(?:\(type 0x12\))?\"?(0x[0-9a-f]+|true|false)\"?", text)
+    if not m:
+        return None
+    v = m.group(1)
+    return v == "true" or (v.startswith("0x") and int(v, 16) != 0)
+
+
 def run(cmd):
     p = subprocess.run(cmd, capture_output=True, text=True)
     return p.returncode, p.stdout + p.stderr
@@ -105,11 +114,13 @@ def check_manifest(apk):
 
     rec("FAIL" if "application-debuggable" in badging else "PASS", "manifest", "release is not debuggable",
         "application-debuggable present" if "application-debuggable" in badging else "no debuggable flag")
-    ab = re.search(r"allowBackup\(0x[0-9a-f]+\)=\(type 0x12\)0x([0-9a-f]+)", tree)
-    rec("PASS" if ab and int(ab.group(1), 16) == 0 else "WARN", "manifest", "allowBackup=false (privacy policy says no cloud backup)",
-        f"allowBackup={'false' if ab and int(ab.group(1), 16) == 0 else 'true or missing'}")
-    ct = re.search(r"usesCleartextTraffic\(0x[0-9a-f]+\)=\(type 0x12\)0x([0-9a-f]+)", tree)
-    rec("FAIL" if ct and int(ct.group(1), 16) != 0 else "PASS", "manifest", "no cleartext traffic", "usesCleartextTraffic not set to true")
+    ab = attr_bool(tree, "allowBackup")
+    rec("PASS" if ab is False else "FAIL", "manifest", "allowBackup=false (privacy policy: no cloud backup)", f"allowBackup={ab}")
+    der = "dataExtractionRules" in tree
+    rec("PASS" if der else "FAIL", "manifest", "dataExtractionRules set (no backup or device transfer on Android 12+)",
+        "present" if der else "missing")
+    ct = attr_bool(tree, "usesCleartextTraffic")
+    rec("FAIL" if ct else "PASS", "manifest", "no cleartext traffic", f"usesCleartextTraffic={ct}")
 
     # foreground service types and their permissions
     fgs = re.findall(r"foregroundServiceType\(0x[0-9a-f]+\)=\(type 0x11\)0x([0-9a-f]+)", tree)
@@ -137,10 +148,12 @@ def check_manifest(apk):
     for b in blocks[1:]:
         kind = b.split(" ", 1)[0]
         name = re.search(r'A: android:name\(0x[0-9a-f]+\)="([^"]+)"', b)
-        ex = re.search(r"exported\(0x[0-9a-f]+\)=\(type 0x12\)0x([0-9a-f]+)", b)
-        if ex and int(ex.group(1), 16) != 0:
+        if attr_bool(b, "exported"):
             exported.append(f"{kind} {name.group(1) if name else '?'}")
-    rec("PASS", "manifest", "exported components (each must be intentional)", "; ".join(exported) or "none")
+    expected = {"activity app.henachti.ui.MainActivity", "receiver app.henachti.service.BootReceiver"}
+    extra = [e for e in exported if e not in expected]
+    rec("FAIL" if extra or not exported else "PASS", "manifest", "exported components are only the launcher and the boot receiver",
+        "; ".join(exported) or "none found (parse problem)")
 
 
 # ---------------------------------------------------------------- B. native code, 16 KB, signature
