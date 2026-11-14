@@ -287,7 +287,7 @@ private fun Centerpiece(
     misheyakir: Long,
     sunset: Long,
 ) {
-    val big = MaterialTheme.typography.displayLarge.copy(fontSize = 48.sp, lineHeight = 52.sp)
+    val big = MaterialTheme.typography.displayLarge
     val verified = state is LockState.Unlocked && state.reason == UnlockReason.VERIFIED
     val rest = state is LockState.Unlocked &&
         (state.reason == UnlockReason.NO_TEFILLIN_DAY || state.reason == UnlockReason.SHABBAT_BEGAN)
