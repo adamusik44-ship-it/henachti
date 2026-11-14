@@ -3,6 +3,7 @@ package app.henachti.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -24,7 +25,8 @@ enum class SunMood { WAITING, HAPPY, SLEEPY, CALM, WORRIED, NIGHT }
 /** The sun (or, at night, a sleeping moon) sitting behind a rounded hill. */
 @Composable
 fun SunMascot(mood: SunMood, modifier: Modifier = Modifier, hill: Color? = Palette.Lime) {
-    Canvas(modifier) {
+    // clipped, so the hill ends at the mascot's own bottom edge and never covers what comes below
+    Canvas(modifier.clipToBounds()) {
         val w = size.width
         val h = size.height
         val r = min(w, h) * 0.30f

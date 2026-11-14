@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>fun mock</title>
+<style>
+  /* Direction mock: playful and calm, inspired by Adam's saved Dribbble shot (EON by Emote Agency).
+     One font (Heebo, three weights), flat colours, a sun character whose mood is the day's state. */
+  :root {
+    --cream: #FBF6E9; --teal: #0E4744; --teal2: #165E59; --maroon: #7A0E2C; --coral: #F2542D;
+    --blush: #F9C9D9; --lime: #D6E09C; --sun: #FFC94A; --ink: #1D1B19; --muted: #6C665E;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #EDE6D6; font-family: "Heebo", sans-serif; color: var(--ink); }
+  .row { display: flex; gap: 36px; padding: 40px; justify-content: center; }
+  .cap { text-align: center; font-weight: 700; font-size: 20px; margin-top: 14px; color: var(--ink); }
+  .sub { text-align: center; font-size: 15px; color: var(--muted); }
+  .phone { width: 390px; height: 844px; border-radius: 52px; background: #111; padding: 12px; box-shadow: 0 30px 60px rgba(0,0,0,.25); }
+  .screen { width: 100%; height: 100%; border-radius: 42px; overflow: hidden; position: relative; background: var(--cream); display: flex; flex-direction: column; }
+  .status { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 14px; font-weight: 700; direction: ltr; }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 6px 22px 0; }
+  .brand { font-weight: 900; font-size: 22px; letter-spacing: -.5px; }
+  .iconbtn { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; }
+  .iconbtn i { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--ink); }
+  .label { text-align: center; font-weight: 700; font-size: 16px; margin-top: 10px; }
+  .big { text-align: center; font-weight: 900; font-size: 64px; line-height: 1; letter-spacing: -2px; direction: ltr; }
+  .char { display: flex; justify-content: center; margin: 4px 0 0; }
+  .task { margin: 8px 20px 0; background: var(--teal); color: var(--cream); border-radius: 26px; padding: 16px 18px; }
+  .task small { display: block; font-size: 12px; opacity: .75; }
+  .task b { display: block; font-size: 22px; font-weight: 900; margin-top: 2px; }
+  .tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tag { background: var(--blush); color: var(--maroon); font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
+  .pill { margin: 14px 20px 0; height: 56px; border-radius: 999px; background: var(--ink); color: var(--cream); display: grid; place-items: center; font-weight: 700; font-size: 17px; }
+  .link { text-align: center; margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--muted); }
+  .stack { position: relative; margin: 16px 20px 0; height: 210px; }
+  .card { position: absolute; right: 0; left: 0; border-radius: 26px; padding: 16px 18px; display: flex; justify-content: space-between; }
+  .card b { font-weight: 900; font-size: 22px; line-height: 1.05; }
+  .card span { font-size: 13px; font-weight: 700; opacity: .8; display: block; margin-top: 2px; }
+  .box { width: 22px; height: 22px; border-radius: 6px; border: 2.5px solid currentColor; flex: none; }
+  .ring { width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 30px; flex: none; }
+  .nav { margin: auto 60px 18px; height: 54px; border-radius: 999px; background: #fff; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .nav div { font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; }
+  .nav div.on { color: var(--ink); }
+  .nav div::before { content: ""; display: block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin: 0 auto 3px; }
+  .dots { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+  .dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--sun); }
+</style>
+</head>
+<body>
+<div class="row">
+
+  <!-- 1. Lock screen: the focus screen, almost empty -->
+  <div>
+    <div class="phone"><div class="screen" style="background: var(--maroon); color: var(--cream);">
+      <div class="status" style="color: var(--cream)"><span>6:50</span><span>●●● ▮</span></div>
+      <div style="text-align:center; font-weight:900; font-size:44px; line-height:1.05; letter-spacing:-1px; margin: 34px 26px 0;">עוד לא<br>הנחת<br>תפילין<br>היום.</div>
+      <div style="text-align:center; font-size:16px; font-weight:700; color: var(--blush); margin-top: 14px;">הטלפון נפתח אחרי שבע כריכות.</div>
+      <div class="char" style="margin-top: 26px;">
+        <svg width="300" height="230" viewBox="0 0 300 230">
+          <!-- a hill, and the sun peeking over it, eyes open: the day is waiting -->
+          <ellipse cx="150" cy="235" rx="200" ry="80" fill="#D6E09C"/>
+          <g transform="translate(150 150)">
+            <g stroke="#FFC94A" stroke-width="10" stroke-linecap="round">
+              <line x1="0" y1="-92" x2="0" y2="-112"/><line x1="-65" y1="-65" x2="-79" y2="-79"/><line x1="65" y1="-65" x2="79" y2="-79"/>
+              <line x1="-92" y1="0" x2="-112" y2="0"/><line x1="92" y1="0" x2="112" y2="0"/>
+            </g>
+            <circle r="72" fill="#FFC94A"/>
+            <circle cx="-24" cy="-10" r="8" fill="#1D1B19"/><circle cx="24" cy="-10" r="8" fill="#1D1B19"/>
+            <ellipse cx="-42" cy="14" rx="12" ry="7" fill="#F9C9D9"/><ellipse cx="42" cy="14" rx="12" ry="7" fill="#F9C9D9"/>
+            <path d="M-14 18 Q0 30 14 18" stroke="#1D1B19" stroke-width="6" fill="none" stroke-linecap="round"/>
+          </g>
+          <ellipse cx="150" cy="235" rx="200" ry="62" fill="#D6E09C"/>
+        </svg>
+      </div>
+      <div class="pill" style="background: var(--cream); color: var(--maroon); margin-top: 0;">הנחתי. אמת במצלמה</div>
+      <div class="link" style="color: var(--blush);">עוד חצי שעה · נשארו 2</div>
+    </div></div>
+    <div class="cap">מסך הנעילה</div><div class="sub">מסך מיקוד: משפט, שמש, כפתור</div>
+  </div>
+
+  <!-- 2. Home, morning, locked -->
+  <div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>6:50</span><span>●●● ▮</span></div>
+      <div class="top"><div class="iconbtn"><i></i></div><div class="brand">וקשרתם</div><div style="width:40px"></div></div>
+      <div class="label">עד השקיעה</div>
+      <div class="big">9:48</div>
+      <div class="char">
+        <svg width="210" height="150" viewBox="0 0 210 150">
+          <ellipse cx="105" cy="150" rx="120" ry="34" fill="#D6E09C"/>
+          <g transform="translate(105 82)">
+            <g stroke="#FFC94A" stroke-width="7" stroke-linecap="round">
+              <line x1="0" y1="-60" x2="0" y2="-74"/><line x1="-42" y1="-42" x2="-52" y2="-52"/><line x1="42" y1="-42" x2="52" y2="-52"/>
+              <line x1="-60" y1="0" x2="-74" y2="0"/><line x1="60" y1="0" x2="74" y2="0"/>
+            </g>
+            <circle r="48" fill="#FFC94A"/>
+            <circle cx="-16" cy="-6" r="5.5" fill="#1D1B19"/><circle cx="16" cy="-6" r="5.5" fill="#1D1B19"/>
+            <ellipse cx="-28" cy="10" rx="8" ry="5" fill="#F9C9D9"/><ellipse cx="28" cy="10" rx="8" ry="5" fill="#F9C9D9"/>
+            <path d="M-9 12 Q0 20 9 12" stroke="#1D1B19" stroke-width="4" fill="none" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+      <div class="task">
+        <small>המשימה של היום</small>
+        <b>להניח תפילין</b>
+        <div class="tags"><span class="tag">אפשר מ-05:41</span><span class="tag">7 כריכות</span><span class="tag">2 דחיות</span></div>
+      </div>
+      <div class="pill">לאימות במצלמה</div>
+      <div class="stack">
+        <div class="card" style="top:0; background: var(--blush); color: var(--maroon); transform: rotate(-2deg);"><div><b>הסידור</b><span>שחרית, מנחה, ערבית</span></div><div class="box"></div></div>
+        <div class="card" style="top:58px; background: var(--maroon); color: var(--cream); transform: rotate(1.5deg);"><div><b>לזכות</b><span>לרפואת פלוני בן פלונית</span></div><div class="box"></div></div>
+        <div class="card" style="top:116px; background: var(--coral); color: var(--cream); align-items:center;"><div><b>23 ימים<br>ברצף</b></div><div class="ring" style="border: 7px solid rgba(251,246,233,.5); color: var(--cream);">23</div></div>
+      </div>
+      <div class="nav"><div class="on">היום</div><div>סידור</div><div>לזכות</div></div>
+    </div></div>
+    <div class="cap">מסך הבית, בוקר</div><div class="sub">שעון גדול, שמש, משימה אחת, כרטיסים צבעוניים</div>
+  </div>
+
+  <!-- 3. Home, after verifying -->
+  <div>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>12:15</span><span>●●● ▮</span></div>
+      <div class="top"><div class="iconbtn"><i></i></div><div class="brand">וקשרתם</div><div style="width:40px"></div></div>
+      <div class="label">הנחת היום ב-07:12</div>
+      <div class="big" style="font-size:56px;">פתוח</div>
+      <div class="char">
+        <svg width="210" height="150" viewBox="0 0 210 150">
+          <ellipse cx="105" cy="150" rx="120" ry="34" fill="#D6E09C"/>
+          <g transform="translate(105 82)">
+            <g stroke="#FFC94A" stroke-width="7" stroke-linecap="round">
+              <line x1="0" y1="-60" x2="0" y2="-74"/><line x1="-42" y1="-42" x2="-52" y2="-52"/><line x1="42" y1="-42" x2="52" y2="-52"/>
+              <line x1="-60" y1="0" x2="-74" y2="0"/><line x1="60" y1="0" x2="74" y2="0"/>
+            </g>
+            <circle r="48" fill="#FFC94A"/>
+            <!-- happy, closed eyes -->
+            <path d="M-23 -4 Q-16 -13 -9 -4" stroke="#1D1B19" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+            <path d="M9 -4 Q16 -13 23 -4" stroke="#1D1B19" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="-28" cy="10" rx="8" ry="5" fill="#F9C9D9"/><ellipse cx="28" cy="10" rx="8" ry="5" fill="#F9C9D9"/>
+            <path d="M-12 10 Q0 24 12 10" stroke="#1D1B19" stroke-width="4" fill="#7A0E2C" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+      <div class="task" style="background: var(--lime); color: var(--ink);">
+        <small style="opacity:.7">היום</small>
+        <b>הטלפון פתוח עד מחר בבוקר</b>
+        <div class="tags"><span class="tag" style="background: var(--cream); color: var(--teal);">24 ימים ברצף</span><span class="tag" style="background: var(--cream); color: var(--teal);">שבוע שלם!</span></div>
+      </div>
+      <div class="pill" style="background: var(--teal);">לסידור</div>
+      <div class="stack" style="height:150px;">
+        <div class="card" style="top:0; background: var(--blush); color: var(--maroon); transform: rotate(-2deg);"><div><b>מנחה</b><span>בעוד 3 שעות</span></div><div class="box"></div></div>
+        <div class="card" style="top:58px; background: var(--maroon); color: var(--cream); transform: rotate(1.5deg);"><div><b>לזכות</b><span>לרפואת פלוני בן פלונית</span></div><div class="box" style="background: var(--cream);"></div></div>
+      </div>
+      <div class="nav"><div class="on">היום</div><div>סידור</div><div>לזכות</div></div>
+    </div></div>
+    <div class="cap">מסך הבית, אחרי אימות</div><div class="sub">השמש מחייכת, כרטיס ירוק</div>
+  </div>
+
+  <!-- 4. Verified -->
+  <div>
+    <div class="phone"><div class="screen" style="background: var(--teal); color: var(--cream);">
+      <div class="status" style="color: var(--cream)"><span>7:12</span><span>●●● ▮</span></div>
+      <div style="text-align:center; font-weight:900; font-size:52px; line-height:1.02; letter-spacing:-1.5px; margin-top: 60px;">הנחת.<br>יום טוב.</div>
+      <div class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div style="text-align:center; font-size:15px; font-weight:700; color: var(--lime); margin-top: 8px;">זוהו 7 כריכות</div>
+      <div class="char" style="margin-top: 30px;">
+        <svg width="260" height="230" viewBox="0 0 260 230">
+          <ellipse cx="130" cy="240" rx="170" ry="70" fill="#165E59"/>
+          <g transform="translate(130 130)">
+            <g stroke="#FFC94A" stroke-width="9" stroke-linecap="round">
+              <line x1="0" y1="-84" x2="0" y2="-104"/><line x1="-60" y1="-60" x2="-73" y2="-73"/><line x1="60" y1="-60" x2="73" y2="-73"/>
+              <line x1="-84" y1="0" x2="-104" y2="0"/><line x1="84" y1="0" x2="104" y2="0"/>
+            </g>
+            <circle r="66" fill="#FFC94A"/>
+            <path d="M-32 -6 Q-22 -18 -12 -6" stroke="#1D1B19" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <path d="M12 -6 Q22 -18 32 -6" stroke="#1D1B19" stroke-width="6" fill="none" stroke-linecap="round"/>
+            <ellipse cx="-38" cy="14" rx="11" ry="7" fill="#F9C9D9"/><ellipse cx="38" cy="14" rx="11" ry="7" fill="#F9C9D9"/>
+            <path d="M-16 14 Q0 34 16 14" stroke="#1D1B19" stroke-width="5" fill="#7A0E2C" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+      <div class="pill" style="background: var(--cream); color: var(--teal); margin-top: auto; margin-bottom: 40px;">המשך</div>
+    </div></div>
+    <div class="cap">הרגע של האימות</div><div class="sub">הכי שמח באפליקציה, בלי קונפטי</div>
+  </div>
+
+</div>
+<script>
+(async () => {
+  if (window.__FONTS) {
+    const ff = new FontFace("Heebo", `url(${window.__FONTS.heebo})`, { weight: "100 900" });
+    await ff.load(); document.fonts.add(ff);
+    for (const w of [400, 700, 900]) await document.fonts.load(`${w} 20px "Heebo"`);
+  }
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>
