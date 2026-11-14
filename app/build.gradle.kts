@@ -52,11 +52,22 @@ android {
 
     buildTypes {
         release {
-            // Release builds are never debuggable; the code is public anyway, so no obfuscation.
+            // Release builds are never debuggable. R8 shrinks and optimizes (Play asks for optimized
+            // DEX from 2027), but names are kept: the code is public anyway and crash traces stay clear.
             isDebuggable = false
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (keystoreFile.exists()) signingConfigs.getByName("release")
                             else signingConfigs.getByName("debug")
+        }
+        // Debug hooks (for the emulator screenshot run) with the same R8 processing as release,
+        // so the run also proves the optimized code does not break any screen.
+        create("qa") {
+            initWith(getByName("debug"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 

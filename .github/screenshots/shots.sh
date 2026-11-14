@@ -6,7 +6,7 @@ set -u
 PKG=app.henachti
 OUT="${OUT:-shots}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-APK=app/build/outputs/apk/direct/debug/app-direct-debug.apk
+APK="${APK:-app/build/outputs/apk/direct/debug/app-direct-debug.apk}"
 mkdir -p "$OUT"
 log() { echo "== $*"; }
 
@@ -152,4 +152,7 @@ activity .ui.LockActivity; shot 91_lock_font130
 app --es route settings; shot 92_settings_font130
 adb shell settings put system font_scale 1.0
 
-log "done: $(ls "$OUT" | wc -l) screenshots"
+adb logcat -d -b crash > "$OUT/crash-log.txt" 2>/dev/null
+log "crashes: $(grep -c 'FATAL EXCEPTION' "$OUT/crash-log.txt" || true)"
+grep -A12 'FATAL EXCEPTION' "$OUT/crash-log.txt" | head -60
+log "done: $(ls "$OUT"/*.png | wc -l) screenshots"

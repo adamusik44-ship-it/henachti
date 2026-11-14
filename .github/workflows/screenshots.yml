@@ -4,6 +4,12 @@ name: Screenshots
 # (.github/screenshots/shots.sh). The PNGs come back as the "screenshots" artifact.
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        description: "debug, or qa (same debug hooks, but shrunk and optimized by R8 like release)"
+        type: choice
+        default: debug
+        options: [debug, qa]
 
 permissions:
   contents: read
@@ -30,8 +36,8 @@ jobs:
         with:
           gradle-version: '9.8.2'
 
-      - name: Build the debug APK
-        run: gradle assembleDirectDebug --no-daemon --stacktrace
+      - name: Build the APK (${{ inputs.variant }})
+        run: gradle assembleDirect${{ inputs.variant == 'qa' && 'Qa' || 'Debug' }} --no-daemon --stacktrace
 
       - name: Enable KVM for the emulator
         run: |
@@ -40,6 +46,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Run the app on an emulator and capture every screen
+        env:
+          APK: app/build/outputs/apk/direct/${{ inputs.variant }}/app-direct-${{ inputs.variant }}.apk
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34

@@ -249,6 +249,9 @@ class BlockerService : Service() {
     private fun evaluate(pkg: String, cls: String?, force: Boolean) {
         lastEvalAt = System.currentTimeMillis()
         if (pkg == packageName) return
+        // Play version: the system App info screen (Force stop, Uninstall) always stays reachable,
+        // so the user can stop or remove the app at any moment, as Play policy requires.
+        if (Guard.IS_PLAY && isAppInfoScreen(pkg, cls)) return
         val state = policy.state()
 
         if (state is LockState.Tampered) {
@@ -271,6 +274,11 @@ class BlockerService : Service() {
             is LockState.Unlocked -> Unit
             is LockState.Tampered -> Unit
         }
+    }
+
+    private fun isAppInfoScreen(pkg: String, cls: String?): Boolean {
+        if (cls == null || pkg !in SETTINGS_PACKAGES) return false
+        return APP_INFO_HINTS.any { cls.contains(it, ignoreCase = true) }
     }
 
     private fun isFixScreen(reason: TamperReason, pkg: String, cls: String?): Boolean {
@@ -389,6 +397,11 @@ class BlockerService : Service() {
         }
 
         /** The system's install / uninstall dialogs. */
+        private val SETTINGS_PACKAGES = setOf("com.android.settings", "com.samsung.android.app.settings")
+
+        /** Class-name fragments of the system "App info" screen on AOSP, Pixel and Samsung builds. */
+        private val APP_INFO_HINTS = listOf("AppInfo", "InstalledAppDetails", "AppDetails", "ApplicationDetails")
+
         private val INSTALLER_PACKAGES = setOf(
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",

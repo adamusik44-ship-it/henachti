@@ -130,7 +130,8 @@ Self-imposed app blocker (digital wellbeing) that the user turns on and can turn
 Ukshartem is a self-imposed blocker the user turns on for themselves. While it is locked it also
 blocks the Settings app and the Play Store app, so the lock cannot be bypassed in a weak moment.
 It never blocks phone calls, emergency dialing, the home screen, the keyboard or the alarm clock,
-and the system uninstall dialog always stays reachable, so the user can remove the app at any time.
+and the system App info screen (Force stop, Uninstall) and the uninstall dialog always stay reachable,
+so the user can stop or remove the app at any time.
 On the first day the lock can be turned off immediately; after that, from the app's settings with a
 48-hour delay. No account is needed; all features are available right after install.
 ```
@@ -157,6 +158,7 @@ On the first day the lock can be turned off immediately; after that, from the ap
 
 - אין "הגנה מפני מחיקה" (מנהל מכשיר). חמישה מתגים במקום שישה.
 - חלון ההסרה של המערכת תמיד פתוח, גם בזמן נעילה.
+- גם מסך "פרטי האפליקציה" של המערכת (עצירה בכוח, הסרה) תמיד פתוח, גם בזמן נעילה. כך המשתמש יכול לעצור את השירות בכל רגע, כמו שהמדיניות דורשת.
 
 כל השאר זהה. הגרסה הישירה (קובץ ה-APK מהקישור) נשארת עם ההגנה המלאה.
 מזהה החבילה ב-Play: `app.ukshartem`. הוא קבוע לתמיד מרגע ההעלאה הראשונה.
