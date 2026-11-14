@@ -309,20 +309,19 @@ fun StreakCalendar(policy: DayPolicy, prefs: Prefs, now: Long, modifier: Modifie
         }
     }
 
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    // aligned to the start (right in Hebrew): the panel above is the screen's one centred moment
+    Column(modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth()) {
             Text(
                 if (streak == 1) "יום אחד ברצף" else "$streak ימים ברצף",
                 style = MaterialTheme.typography.headlineSmall,
                 color = Palette.Ink,
-                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 "${prefs.verifiedCount} אימותים מאז ההתקנה. שבת וחג לא שוברים את הרצף.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Palette.Muted,
-                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth()) {
@@ -345,7 +344,7 @@ fun StreakCalendar(policy: DayPolicy, prefs: Prefs, now: Long, modifier: Modifie
                 }
             }
             Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Start, modifier = Modifier.fillMaxWidth()) {
                 DayDot(DayKind.VERIFIED)
                 Spacer(Modifier.width(5.dp))
                 Text("הנחת", style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
