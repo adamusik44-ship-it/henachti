@@ -23,6 +23,7 @@ import app.henachti.ui.Palette
 import app.henachti.ui.TopBar
 
 private const val PRIVACY_URL = "https://adamusik44-ship-it.github.io/ukshartem/privacy.html"
+private const val CONTACT_EMAIL = "ukshartem.app@gmail.com"
 
 /** Privacy, terms and credits, with a link to the full privacy policy on the web (Play asks for it inside the app). */
 @Composable
@@ -46,6 +47,16 @@ fun AboutScreen(version: String, onBack: () -> Unit) {
                 contentPadding = PaddingValues(0.dp),
             ) {
                 Text("מדיניות הפרטיות המלאה, באתר", style = MaterialTheme.typography.titleSmall, color = Palette.GoldText)
+            }
+            TextButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$CONTACT_EMAIL")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                },
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("לפניות: $CONTACT_EMAIL", style = MaterialTheme.typography.titleSmall, color = Palette.GoldText)
             }
             Para("האפליקציה לא אוספת, לא שומרת מחוץ לטלפון ולא שולחת שום מידע. אין לה הרשאת אינטרנט, ואין שרת.")
             Para("מצלמה: בזמן האימות הפריימים מנותחים בזיכרון ונמחקים מיד. לא נשמרת תמונה, לא נשלחת תמונה.")
