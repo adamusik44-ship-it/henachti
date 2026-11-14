@@ -43,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.henachti.R
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
@@ -165,7 +166,7 @@ fun SnoozeDots(left: Int, max: Int, modifier: Modifier = Modifier) {
 
 /** The half hour of a snooze as a ring that empties, with minutes and seconds in the middle. */
 @Composable
-fun CountdownRing(until: Long, total: Long, modifier: Modifier = Modifier, diameter: Dp = 116.dp) {
+fun CountdownRing(until: Long, total: Long, modifier: Modifier = Modifier, diameter: Dp = 116.dp, dark: Boolean = false) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(until) {
         while (true) {
@@ -180,7 +181,10 @@ fun CountdownRing(until: Long, total: Long, modifier: Modifier = Modifier, diame
             val stroke = 5.dp.toPx()
             val inset = stroke / 2f
             val ring = Size(this.size.width - stroke, this.size.height - stroke)
-            drawArc(Palette.Sand, 0f, 360f, false, Offset(inset, inset), ring, style = Stroke(width = stroke))
+            drawArc(
+                if (dark) Palette.Cream.copy(alpha = 0.18f) else Palette.Sand,
+                0f, 360f, false, Offset(inset, inset), ring, style = Stroke(width = stroke),
+            )
             if (fraction > 0f) {
                 drawArc(
                     Palette.Gold, -90f, -360f * fraction, false, Offset(inset, inset), ring,
@@ -192,8 +196,9 @@ fun CountdownRing(until: Long, total: Long, modifier: Modifier = Modifier, diame
             Text(
                 String.format(Locale.US, "%d:%02d", left / 60_000L, (left / 1_000L) % 60L),
                 style = MaterialTheme.typography.headlineSmall,
+                color = if (dark) Palette.Cream else Palette.Ink,
             )
-            Text("עד שהמנעול חוזר", style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
+            Text("עד שהמנעול חוזר", style = MaterialTheme.typography.labelSmall, color = if (dark) Palette.Sand else Palette.Muted)
         }
     }
 }
@@ -294,10 +299,20 @@ fun StreakCalendar(policy: DayPolicy, prefs: Prefs, now: Long, modifier: Modifie
     SoftCard(modifier.fillMaxWidth()) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painterResource(R.drawable.ic_flame), contentDescription = null, tint = Palette.GoldDeep, modifier = Modifier.size(22.dp))
+                Text(
+                    "$streak",
+                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 46.sp, lineHeight = 50.sp),
+                    color = Palette.GoldDeep,
+                )
                 Spacer(Modifier.width(12.dp))
-                Text("הרצף שלך", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Text(daysText(streak), style = MaterialTheme.typography.titleLarge, color = Palette.GoldDeep)
+                Column(Modifier.weight(1f)) {
+                    Text(if (streak == 1) "יום ברצף" else "ימים ברצף", style = MaterialTheme.typography.titleMedium)
+                    Text("שבת וחג לא שוברים את הרצף", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${prefs.verifiedCount}", style = MaterialTheme.typography.titleLarge, color = Palette.Ink)
+                    Text("אימותים", style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
+                }
             }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth()) {

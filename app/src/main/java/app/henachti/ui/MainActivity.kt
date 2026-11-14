@@ -3,9 +3,13 @@ package app.henachti.ui
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +45,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_REQUEST_ADMIN = "request_admin"
+        private val CREAM_ARGB: Int = 0xFFF6F0E6.toInt()
     }
 
     private lateinit var prefs: Prefs
@@ -51,6 +56,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         prefs = Prefs.get(this)
         policy = DayPolicy(this)
+        // Draw behind the system bars on every Android version (15+ does it anyway), with dark
+        // icons on the cream screens; Home turns the status-bar icons light over its dark panel.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(CREAM_ARGB, CREAM_ARGB),
+        )
         setContent {
             HenachtiTheme { AppRoot() }
         }
@@ -117,6 +128,8 @@ class MainActivity : ComponentActivity() {
 
         Scaffold(
             containerColor = Palette.Cream,
+            // Home paints its own panel under the status bar; every other screen keeps the bar insets
+            contentWindowInsets = if (route == Tab.HOME.route) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
             bottomBar = {
                 if (showNav) BottomNav(route) { tab -> nav.goTab(tab.route) }
             },
