@@ -147,11 +147,16 @@ def check_manifest(apk):
     blocks = re.split(r"\n\s*E: (?=activity|receiver|service|provider)", tree)
     for b in blocks[1:]:
         kind = b.split(" ", 1)[0]
-        name = re.search(r'A: android:name\(0x[0-9a-f]+\)="([^"]+)"', b)
+        name = re.search(r'name\(0x01010003\)="([^"]+)"', b)
+        protected = re.search(r'permission\(0x01010006\)="([^"]+)"', b)
         if attr_bool(b, "exported"):
-            exported.append(f"{kind} {name.group(1) if name else '?'}")
+            label = f"{kind} {name.group(1) if name else '?'}"
+            if protected:
+                label += f" (protected by {protected.group(1).split('.')[-1]})"
+            exported.append(label)
     expected = {"activity app.henachti.ui.MainActivity", "receiver app.henachti.service.BootReceiver"}
-    extra = [e for e in exported if e not in expected]
+    # a component guarded by a system permission (e.g. androidx ProfileInstallReceiver behind DUMP) is not open to apps
+    extra = [e for e in exported if e not in expected and "(protected by" not in e]
     rec("FAIL" if extra or not exported else "PASS", "manifest", "exported components are only the launcher and the boot receiver",
         "; ".join(exported) or "none found (parse problem)")
 
