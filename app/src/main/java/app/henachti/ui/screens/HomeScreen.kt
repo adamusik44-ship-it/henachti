@@ -22,6 +22,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,16 +41,23 @@ import app.henachti.domain.LockState
 import app.henachti.domain.TamperReason
 import app.henachti.domain.UnlockReason
 import app.henachti.ui.Arch
-import app.henachti.ui.CardShape
+import app.henachti.ui.CountdownRing
+import app.henachti.ui.DayArc
 import app.henachti.ui.DarkButton
 import app.henachti.ui.Eyebrow
 import app.henachti.ui.GoldButton
 import app.henachti.ui.HalfSpacer
 import app.henachti.ui.LinkRow
+import app.henachti.ui.MilestoneCard
+import app.henachti.ui.OpeningLock
 import app.henachti.ui.Palette
+import app.henachti.ui.SnoozeDots
 import app.henachti.ui.StatRow
+import app.henachti.ui.StreakCalendar
 import app.henachti.ui.TamperUi
 import app.henachti.ui.TopBar
+import app.henachti.ui.restDayTitle
+import app.henachti.service.BlockerService
 
 @Composable
 fun HomeScreen(
@@ -79,7 +90,7 @@ fun HomeScreen(
             Eyebrow(policy.hebrewDate(state.day), Modifier.align(Alignment.CenterHorizontally))
             Spacer(Modifier.height(12.dp))
 
-            HeroCard(state, policy, onVerify, onSettings, onFix)
+            HeroCard(state, policy, now, onVerify, onSettings, onFix)
 
             Dedications.label(prefs)?.let {
                 Spacer(Modifier.height(10.dp))
@@ -92,9 +103,20 @@ fun HomeScreen(
                 )
             }
 
+            val streak = remember(now) { policy.streak(now) }
+            var milestoneSeen by remember { mutableIntStateOf(prefs.milestoneSeen) }
+            MilestoneCard(
+                streak = streak,
+                seen = milestoneSeen,
+                onDismiss = { reached ->
+                    prefs.milestoneSeen = reached
+                    milestoneSeen = reached
+                },
+                modifier = Modifier.padding(top = 14.dp),
+            )
+
             Spacer(Modifier.height(14.dp))
-            val streak = policy.streak(now)
-            StatRow(painterResource(R.drawable.ic_flame), "הרצף שלך", if (streak == 1) "יום אחד" else "$streak ימים")
+            StreakCalendar(policy, prefs, now)
             Spacer(Modifier.height(10.dp))
             StatRow(
                 painterResource(R.drawable.ic_sparkle), "אימותים מאז ההתקנה", "${prefs.verifiedCount}",
@@ -151,6 +173,7 @@ private fun TimeChip(time: String) {
 private fun HeroCard(
     state: LockState,
     policy: DayPolicy,
+    now: Long,
     onVerify: () -> Unit,
     onSettings: () -> Unit,
     onFix: (TamperReason) -> Unit,
@@ -165,14 +188,24 @@ private fun HeroCard(
             .padding(horizontal = 20.dp, vertical = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Arch(width = 116.dp, height = 144.dp) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    painterResource(R.drawable.ic_sparkle), contentDescription = null,
-                    tint = Palette.Gold, modifier = Modifier.size(38.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
+        if (state is LockState.Snoozed) {
+            // during a snooze the arch gives way to the half hour running out
+            CountdownRing(until = state.until, total = BlockerService.SNOOZE_MS, diameter = 132.dp)
+        } else {
+            val verified = state is LockState.Unlocked && state.reason == UnlockReason.VERIFIED
+            Arch(width = 116.dp, height = 144.dp) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    when {
+                        verified || state is LockState.Locked ->
+                            OpeningLock(open = verified, modifier = Modifier.size(46.dp))
+                        else -> Icon(
+                            painterResource(R.drawable.ic_sparkle), contentDescription = null,
+                            tint = Palette.Gold, modifier = Modifier.size(38.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
+                }
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -185,11 +218,12 @@ private fun HeroCard(
                     DarkButton("אושר להיום", {}, Modifier.fillMaxWidth(), vector = Icons.Filled.Check)
                 }
                 UnlockReason.NO_TEFILLIN_DAY -> {
-                    val reason = policy.noTefillinReason(state.day) ?: "היום"
-                    HeroText(if (reason == "שבת") "שבת שלום" else "$reason שמח", "אין הנחת תפילין היום, והמנעול נח.")
+                    HeroText(restDayTitle(policy.noTefillinReason(state.day)), "אין הנחת תפילין היום, והמנעול נח.")
                 }
                 UnlockReason.BEFORE_START -> {
                     HeroText("עוד מוקדם", "המנעול נדרך ב-${IsraelTime.hhmm(policy.lockStart(state.day))}. עד אז הטלפון פתוח, ואפשר כבר לאמת.")
+                    Spacer(Modifier.height(16.dp))
+                    DayArc(policy.misheyakir(state.day), policy.sunset(state.day), now)
                     Spacer(Modifier.height(16.dp))
                     GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
                 }
@@ -202,19 +236,36 @@ private fun HeroCard(
                 }
             }
             is LockState.Locked -> {
-                HeroText(
-                    "התפילין מחכות",
-                    when {
-                        state.snoozesLeft == 1 -> "הטלפון נפתח אחרי האימות במצלמה. נשארה לך דחייה אחת של חצי שעה."
-                        state.snoozesLeft > 1 -> "הטלפון נפתח אחרי האימות במצלמה. נשארו לך ${state.snoozesLeft} דחיות של חצי שעה."
-                        else -> "הטלפון נפתח אחרי האימות במצלמה. הדחיות של היום נגמרו."
-                    },
-                )
+                HeroText("התפילין מחכות", "הטלפון נפתח אחרי האימות במצלמה.")
+                Spacer(Modifier.height(16.dp))
+                DayArc(policy.misheyakir(state.day), policy.sunset(state.day), now)
                 Spacer(Modifier.height(16.dp))
                 GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
+                if (state.snoozesPerDay > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SnoozeDots(state.snoozesLeft, state.snoozesPerDay)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when (state.snoozesLeft) {
+                                0 -> "הדחיות של היום נגמרו"
+                                1 -> "נשארה דחייה אחת של חצי שעה"
+                                else -> "נשארו ${state.snoozesLeft} דחיות של חצי שעה"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Palette.Muted,
+                        )
+                    }
+                }
             }
             is LockState.Snoozed -> {
-                HeroText("חצי שעה של חסד", "דחייה ${state.used} מתוך ${state.max}. הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר.")
+                HeroText("חצי שעה של חסד", "הכול פתוח עד ${IsraelTime.hhmm(state.until)}, ואז המנעול חוזר.")
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SnoozeDots((state.max - state.used).coerceAtLeast(0), state.max)
+                    Spacer(Modifier.width(8.dp))
+                    Text("דחייה ${state.used} מתוך ${state.max}", style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+                }
                 Spacer(Modifier.height(16.dp))
                 GoldButton("לאימות", onVerify, Modifier.fillMaxWidth())
             }

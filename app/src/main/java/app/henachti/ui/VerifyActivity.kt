@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -16,6 +18,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -27,7 +30,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,6 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,10 +62,20 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import app.henachti.data.Prefs
 import app.henachti.domain.DayPolicy
+import app.henachti.service.BlockerService
 import app.henachti.verify.WindingDetector
+import app.henachti.widget.StatusWidget
 import kotlinx.coroutines.delay
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+
+private val TIPS = listOf(
+    "קרב את הטלפון עד שהאמה ממלאת את המסגרת.",
+    "סובב את היד לאור. צל חזק מסתיר כריכות.",
+    "הרם את השרוול מעל המרפק.",
+    "החזק את היד יציבה שנייה או שתיים.",
+    "האמה לרוחב המסגרת, והרצועות חוצות אותה.",
+)
 
 /**
  * Live camera only. The preview is analysed a few times a second; the forearm has to sit
@@ -69,6 +91,8 @@ class VerifyActivity : ComponentActivity() {
     private val liveBands = mutableIntStateOf(0)
     private val phase = mutableStateOf<Phase>(Phase.Scanning)
     private val recent = ArrayDeque<Boolean>()
+    private val recentBands = ArrayDeque<Int>()
+    private var bestShown = 0
     private var lastAnalysedAt = 0L
     private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
@@ -137,13 +161,29 @@ class VerifyActivity : ComponentActivity() {
 
     private fun handleReading(bands: Int) {
         if (phase.value !is Phase.Scanning) return
-        liveBands.intValue = bands
+        // what the screen shows: the best of the last three frames, so the dots do not flicker
+        recentBands.addLast(bands)
+        while (recentBands.size > 3) recentBands.removeFirst()
+        val shown = (recentBands.maxOrNull() ?: 0).coerceAtMost(WindingDetector.REQUIRED)
+        liveBands.intValue = shown
+        // one soft tick for every winding that is seen for the first time in this attempt
+        if (shown > bestShown) {
+            bestShown = shown
+            window.decorView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        }
+
         recent.addLast(bands >= WindingDetector.REQUIRED)
         while (recent.size > 6) recent.removeFirst()
         if (recent.count { it } >= 4) {
             prefs.markVerified(policy.currentDay())
             prefs.verifiedCount = prefs.verifiedCount + 1
             phase.value = Phase.Verified("זוהו $bands כריכות על האמה.")
+            window.decorView.performHapticFeedback(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM
+                else HapticFeedbackConstants.LONG_PRESS
+            )
+            BlockerService.instance?.updateNotification()
+            StatusWidget.updateAll(this)
         }
     }
 
@@ -156,11 +196,17 @@ class VerifyActivity : ComponentActivity() {
         var facing by lensFacing
         val bands = liveBands.intValue
         val current = phase.value
-        var showHint by remember { mutableStateOf(false) }
+        var tip by remember { mutableIntStateOf(-1) }
 
+        // after 10 seconds, one tip at a time, changing every few seconds
         LaunchedEffect(Unit) {
-            delay(15_000)
-            showHint = true
+            delay(10_000)
+            var i = 0
+            while (true) {
+                tip = i % TIPS.size
+                i++
+                delay(4_500)
+            }
         }
 
         Column(
@@ -194,7 +240,7 @@ class VerifyActivity : ComponentActivity() {
             ) {
                 if (hasPermission) {
                     CameraPreview(facing)
-                    // the guide: where the detector looks
+                    // the guide: where the detector looks, with a dashed forearm to aim at
                     Box(
                         Modifier
                             .align(Alignment.Center)
@@ -202,22 +248,36 @@ class VerifyActivity : ComponentActivity() {
                             .fillMaxHeight(0.40f)
                             .border(
                                 3.dp,
-                                if (bands >= WindingDetector.REQUIRED) Palette.Success else Palette.Paper,
+                                if (bands >= WindingDetector.REQUIRED) Palette.Gold else Palette.Paper,
                                 RoundedCornerShape(12.dp)
                             )
-                    )
-                    Text(
-                        text = when {
-                            bands >= WindingDetector.REQUIRED -> "רואה $bands כריכות"
-                            bands > 0 -> "רואה $bands כריכות, צריך ${WindingDetector.REQUIRED}"
-                            else -> "לא רואה כריכות עדיין"
-                        },
-                        color = Palette.Paper,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
+                    ) {
+                        if (bands == 0) {
+                            ArmGuide(
+                                Modifier
+                                    .fillMaxSize()
+                                    .padding(14.dp)
+                            )
+                        }
+                    }
+                    Column(
+                        Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 14.dp),
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        WindingDots(bands)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = when {
+                                bands >= WindingDetector.REQUIRED -> "כל ${WindingDetector.REQUIRED} הכריכות. רגע אחד"
+                                bands > 0 -> "רואה $bands מתוך ${WindingDetector.REQUIRED} כריכות"
+                                else -> "לא רואה כריכות עדיין"
+                            },
+                            color = Palette.Paper,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
                 } else {
                     Column(
                         Modifier
@@ -234,8 +294,8 @@ class VerifyActivity : ComponentActivity() {
                 }
 
                 when (current) {
-                    is Phase.Verified -> Overlay(title = "הנחת. יום טוב.", body = current.note)
-                    is Phase.Failed -> Overlay(title = "משהו השתבש.", body = current.message)
+                    is Phase.Verified -> Overlay(title = "הנחת. יום טוב.", body = current.note, unlocked = true)
+                    is Phase.Failed -> Overlay(title = "משהו השתבש.", body = current.message, unlocked = false)
                     Phase.Scanning -> Unit
                 }
             }
@@ -244,9 +304,9 @@ class VerifyActivity : ComponentActivity() {
 
             when (current) {
                 Phase.Scanning -> {
-                    if (showHint) {
+                    if (tip >= 0 && bands < WindingDetector.REQUIRED) {
                         Text(
-                            "לא מזהה? קרב את הטלפון עד שהאמה ממלאת את המסגרת, סובב לאור, והרם את השרוול מעל המרפק.",
+                            "טיפ: ${TIPS[tip]}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Palette.Bronze,
                         )
@@ -275,11 +335,11 @@ class VerifyActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun Overlay(title: String, body: String) {
+    private fun Overlay(title: String, body: String, unlocked: Boolean) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Palette.Ink.copy(alpha = 0.78f))
+                .background(Palette.ChocolateDeep.copy(alpha = if (unlocked) 0.88f else 0.78f))
         ) {
             Column(
                 Modifier
@@ -287,6 +347,13 @@ class VerifyActivity : ComponentActivity() {
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                if (unlocked) {
+                    // the moment of the day: the arch, and the lock inside it opening
+                    Arch(width = 112.dp, height = 138.dp) {
+                        OpeningLock(open = true, modifier = Modifier.size(52.dp))
+                    }
+                    Spacer(Modifier.height(20.dp))
+                }
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineMedium,
@@ -302,6 +369,63 @@ class VerifyActivity : ComponentActivity() {
                         textAlign = TextAlign.Center,
                     )
                 }
+            }
+        }
+    }
+
+    /** Seven dots, one per winding, filling in gold as the detector sees them. */
+    @Composable
+    private fun WindingDots(bands: Int) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            repeat(WindingDetector.REQUIRED) { i ->
+                val on = i < bands
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(if (on) Palette.Gold else Color.Transparent)
+                        .border(1.5.dp, if (on) Palette.Gold else Palette.Paper.copy(alpha = 0.7f), CircleShape)
+                )
+            }
+        }
+    }
+
+    /** A dashed forearm lying across the frame: elbow on one side, wrist and hand on the other. */
+    @Composable
+    private fun ArmGuide(modifier: Modifier) {
+        Canvas(modifier) {
+            val w = size.width
+            val h = size.height
+            val cy = h / 2f
+            val elbow = h * 0.30f
+            val wrist = h * 0.19f
+            val arm = Path().apply {
+                moveTo(w * 0.04f, cy - elbow)
+                cubicTo(w * 0.35f, cy - elbow * 1.05f, w * 0.62f, cy - wrist * 1.15f, w * 0.80f, cy - wrist)
+                lineTo(w * 0.80f, cy + wrist)
+                cubicTo(w * 0.62f, cy + wrist * 1.15f, w * 0.35f, cy + elbow * 1.05f, w * 0.04f, cy + elbow)
+                close()
+            }
+            val dash = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 8.dp.toPx()), 0f)
+            val line = Palette.Paper.copy(alpha = 0.75f)
+            drawPath(arm, line, style = Stroke(width = 2.dp.toPx(), pathEffect = dash, cap = StrokeCap.Round))
+            // the hand: a dashed rounded end past the wrist
+            drawOval(
+                line,
+                topLeft = Offset(w * 0.80f, cy - wrist * 1.25f),
+                size = Size(w * 0.16f, wrist * 2.5f),
+                style = Stroke(width = 2.dp.toPx(), pathEffect = dash),
+            )
+            // where the windings go, as faint slanted marks
+            val mark = Palette.Gold.copy(alpha = 0.55f)
+            for (k in 0 until 7) {
+                val x = w * (0.16f + k * 0.085f)
+                val half = elbow - (elbow - wrist) * (x / (w * 0.80f))
+                drawLine(
+                    mark, Offset(x - 6.dp.toPx(), cy + half * 0.8f), Offset(x + 6.dp.toPx(), cy - half * 0.8f),
+                    strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round,
+                )
             }
         }
     }

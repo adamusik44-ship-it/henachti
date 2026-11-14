@@ -7,5 +7,7 @@
     <string name="notif_snoozed">דחייה פעילה עד %1$s.</string>
     <string name="notif_unlocked">פתוח. שומר על ההרגל.</string>
     <string name="notif_tampered">משהו כובה. הטלפון נעול עד שיוחזר.</string>
+    <string name="widget_label">וקשרתם: היום</string>
+    <string name="widget_description">האם הנחת היום, כמה דחיות נשארו, והרצף.</string>
     <string name="admin_description">מונע הסרה של וקשרתם בלחיצה ארוכה. הסרה מסודרת: מתוך האפליקציה, אחרי 48 שעות.</string>
 </resources>

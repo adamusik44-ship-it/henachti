@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:gravity="center"
+    android:layoutDirection="rtl"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <TextView
+        android:id="@+id/widget_brand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="וּקְשַׁרְתָּם"
+        android:textColor="#C9A75C"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/widget_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="serif"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="הנחת היום"
+        android:textColor="#F6F0E6"
+        android:textSize="21sp" />
+
+    <TextView
+        android:id="@+id/widget_sub"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:gravity="center"
+        android:maxLines="2"
+        android:text="הטלפון פתוח עד מחר בבוקר"
+        android:textColor="#E2D7C3"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/widget_streak"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text="רצף: 12 ימים"
+        android:textColor="#E2CC8E"
+        android:textSize="13sp" />
+</LinearLayout>

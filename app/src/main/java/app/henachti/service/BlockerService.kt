@@ -32,6 +32,7 @@ import app.henachti.domain.TamperReason
 import app.henachti.ui.LockActivity
 import app.henachti.ui.MainActivity
 import app.henachti.ui.TamperUi
+import app.henachti.widget.StatusWidget
 
 /**
  * Foreground service that watches which app is in front (UsageStats events, polled while the
@@ -59,6 +60,8 @@ class BlockerService : Service() {
     private var lastBlindActionAt = 0L
     private var currentPkg: String? = null
     private var currentClass: String? = null
+    private var lastStateKey: String? = null
+    private var lastStateCheckAt = 0L
 
     private val poll = object : Runnable {
         override fun run() {
@@ -122,6 +125,7 @@ class BlockerService : Service() {
     private fun startPolling() {
         if (polling) return
         polling = true
+        lastStateCheckAt = 0L
         lastQueryEnd = System.currentTimeMillis() - 3_000L
         handler.removeCallbacks(poll)
         handler.post(poll)
@@ -135,6 +139,7 @@ class BlockerService : Service() {
     /** One poll: find the most recent foreground event and react to it. */
     private fun tick() {
         val now = System.currentTimeMillis()
+        checkStateChanged(now)
         if (!Guard.hasUsageAccess(this)) {
             handleBlind(now)
             return
@@ -170,6 +175,25 @@ class BlockerService : Service() {
         // Even with no new event, re-check every few seconds: the snooze may have ended,
         // misheyakir may have passed, or a permission may have been pulled.
         if (now - lastEvalAt > REEVAL_MS) currentPkg?.let { evaluate(it, currentClass, force = false) }
+    }
+
+    /**
+     * Every 20 seconds while the screen is on (and at once when it turns on): if the day moved to a
+     * new phase (locked, snoozed, verified, sunset...), refresh the notification and the home-screen widget.
+     */
+    private fun checkStateChanged(now: Long) {
+        if (now - lastStateCheckAt < STATE_CHECK_MS) return
+        lastStateCheckAt = now
+        val key = when (val st = policy.state(now)) {
+            is LockState.Unlocked -> "U:${st.reason}:${st.day}"
+            is LockState.Locked -> "L:${st.snoozesLeft}:${st.day}"
+            is LockState.Snoozed -> "S:${st.until}"
+            is LockState.Tampered -> "T:${st.reason}"
+        }
+        if (key != lastStateKey) {
+            lastStateKey = key
+            updateNotification()
+        }
     }
 
     /** Usage access was revoked while armed: we cannot see anything, so keep the phone unusable until it is back. */
@@ -326,12 +350,14 @@ class BlockerService : Service() {
     fun updateNotification() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         runCatching { nm.notify(NOTIFICATION_ID, buildNotification()) }
+        StatusWidget.updateAll(this)
     }
 
     companion object {
         const val SNOOZE_MS = 30L * 60L * 1000L
         private const val POLL_MS = 500L
         private const val REEVAL_MS = 5_000L
+        private const val STATE_CHECK_MS = 20_000L
         private const val BLIND_INTERVAL_MS = 4_000L
         private const val FIX_GRACE_MS = 90_000L
         private const val EVENT_FOREGROUND = 1 // UsageEvents.Event.MOVE_TO_FOREGROUND / ACTIVITY_RESUMED

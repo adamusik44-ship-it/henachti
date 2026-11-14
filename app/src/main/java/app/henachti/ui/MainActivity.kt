@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         BlockerService.ensureRunning(this)
         BlockerService.instance?.refreshAllowlist()
         tick.longValue = System.currentTimeMillis()
+        app.henachti.widget.StatusWidget.updateAll(this)
     }
 
     private fun refresh() {

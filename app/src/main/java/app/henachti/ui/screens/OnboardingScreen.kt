@@ -8,8 +8,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,27 +21,46 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import app.henachti.R
 import app.henachti.data.Prefs
+import app.henachti.domain.DayPolicy
+import app.henachti.domain.IsraelTime
 import app.henachti.service.BlockerService
 import app.henachti.service.Guard
 import app.henachti.service.findActivity
+import app.henachti.ui.Arch
+import app.henachti.ui.Eyebrow
 import app.henachti.ui.GoldButton
 import app.henachti.ui.HenachtiSwitch
 import app.henachti.ui.Palette
 import app.henachti.ui.SoftCard
+import app.henachti.ui.StepBar
 import app.henachti.ui.TopBar
 
 /** Six switches in the direct build, five on Google Play (no uninstall protection there). */
@@ -57,9 +80,19 @@ fun grantedCount(context: Context): Int {
     return n
 }
 
+/** One permission: whether it is on, whether the lock needs it, and how to switch it on. */
+private class Perm(
+    val on: Boolean,
+    val required: Boolean,
+    val title: String,
+    val why: String,
+    val action: String,
+    val open: () -> Unit,
+)
+
 /**
- * The first thing a new user sees: six switches. Each one opens the matching system screen;
- * when the user comes back it is already on. Three are required, three are recommended.
+ * First run: one permission per step with a progress bar, then the usual tefillin time, then arming.
+ * From Settings (or once armed): the same switches as one list.
  */
 @Composable
 fun OnboardingScreen(
@@ -101,6 +134,337 @@ fun OnboardingScreen(
         }
     }
 
+    val perms = buildList {
+        add(
+            Perm(
+                usageOn, true, "לראות איזו אפליקציה פתוחה",
+                "בלי זה המנעול עיוור. ברשימה שתיפתח מצא את \"וקשרתם\" והדלק.",
+                "פתח את הרשימה",
+            ) { open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+        )
+        add(
+            Perm(
+                overlayOn, true, "להציג את מסך הנעילה מעל אפליקציות",
+                "כך המסך קופץ מעל מה שפתחת.",
+                "פתח את ההגדרה",
+            ) { open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))) }
+        )
+        if (withAdmin) {
+            add(
+                Perm(
+                    adminOn, true, "הגנה מפני מחיקה",
+                    "אנדרואיד לא ייתן למחוק את האפליקציה בלחיצה ארוכה. יש מסך אישור של המערכת.",
+                    "הפעל הגנה",
+                ) { if (activity != null) Guard.requestAdmin(activity) else open(Guard.addAdminIntent(context)) }
+            )
+        }
+        add(
+            Perm(
+                cameraOn, false, "מצלמה",
+                "לאימות החי של הכריכות. בלי גלריה, ושום תמונה לא נשמרת.",
+                "אשר מצלמה",
+            ) { cameraPermission.launch(Manifest.permission.CAMERA) }
+        )
+        add(
+            Perm(
+                notifOn, false, "התראה שקטה",
+                "מחזיקה את המנעול ער ומראה את המצב בשורת ההתראות.",
+                "אשר התראה",
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        )
+        add(
+            Perm(
+                batteryOk, false, "בלי חיסכון סוללה על האפליקציה",
+                if (Guard.IS_PLAY) "כדי שהשירות לא יירדם באמצע היום. ברשימה שתיפתח בחר \"כל האפליקציות\", מצא את \"וקשרתם\" וכבה את החיסכון."
+                else "כדי שהשירות לא יירדם באמצע היום.",
+                "פתח את ההגדרה",
+            ) {
+                // The direct request needs a permission Google Play restricts; the Play build opens the system list instead.
+                if (Guard.IS_PLAY) open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                else open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
+            }
+        )
+    }
+
+    val arm = {
+        prefs.arm()
+        BlockerService.ensureRunning(context)
+        onRefresh()
+        onDone()
+    }
+
+    if (firstRun && !armed) {
+        SetupSteps(prefs = prefs, perms = perms, required = required, onArm = arm, onLater = onDone)
+    } else {
+        PermissionList(perms, withAdmin, required, armed, firstRun, onArm = arm, onDone = onDone, onBack = onBack)
+    }
+}
+
+@Composable
+private fun SetupSteps(
+    prefs: Prefs,
+    perms: List<Perm>,
+    required: Boolean,
+    onArm: () -> Unit,
+    onLater: () -> Unit,
+) {
+    val total = perms.size + 3 // welcome, the permissions, the usual time, arming
+    var step by rememberSaveable { mutableIntStateOf(0) }
+    val last = total - 1
+    BackHandler(enabled = step > 0) { step-- }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+    ) {
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("צעד ${step + 1} מתוך $total", style = MaterialTheme.typography.labelMedium, color = Palette.GoldDeep)
+            Spacer(Modifier.weight(1f))
+            if (step > 0) {
+                TextButton(onClick = { step-- }) { Text("חזרה", color = Palette.Muted) }
+            } else {
+                Spacer(Modifier.height(48.dp))
+            }
+        }
+        StepBar(step, total)
+        Spacer(Modifier.height(28.dp))
+
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+        ) {
+            when {
+                step == 0 -> WelcomePage()
+                step <= perms.size -> PermPage(perms[step - 1])
+                step == last - 1 -> TimePage(prefs)
+                else -> ArmPage(perms, required)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        when {
+            step == 0 -> GoldButton("מתחילים", { step++ }, Modifier.fillMaxWidth())
+            step <= perms.size -> {
+                val p = perms[step - 1]
+                if (p.on) {
+                    GoldButton("הבא", { step++ }, Modifier.fillMaxWidth())
+                } else {
+                    GoldButton(p.action, p.open, Modifier.fillMaxWidth())
+                    if (!p.required) {
+                        TextButton(onClick = { step++ }, modifier = Modifier.fillMaxWidth()) {
+                            Text("דלג בינתיים", color = Palette.InkSoft)
+                        }
+                    }
+                }
+            }
+            step == last - 1 -> GoldButton("הבא", { step++ }, Modifier.fillMaxWidth())
+            else -> {
+                GoldButton("דרוך את המנעול", onArm, Modifier.fillMaxWidth(), enabled = required)
+                if (!required) {
+                    val missing = perms.indexOfFirst { it.required && !it.on }
+                    if (missing >= 0) {
+                        TextButton(onClick = { step = missing + 1 }, modifier = Modifier.fillMaxWidth()) {
+                            Text("חזרה להרשאה שחסרה", color = Palette.GoldDeep)
+                        }
+                    }
+                }
+            }
+        }
+        TextButton(onClick = onLater, modifier = Modifier.fillMaxWidth()) {
+            Text("אחר כך. קודם להסתכל", color = Palette.Muted)
+        }
+        Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun WelcomePage() {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Arch(width = 116.dp, height = 144.dp) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(painterResource(R.drawable.ic_sparkle), contentDescription = null, tint = Palette.Gold, modifier = Modifier.size(38.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("וּקְשַׁרְתָּם לְאוֹת", style = MaterialTheme.typography.labelSmall, color = Palette.GoldSoft)
+            }
+        }
+        Spacer(Modifier.height(26.dp))
+        Text(
+            "כמה צעדים קצרים, ומכאן הכול עובד לבד.",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "בכל צעד הרשאה אחת, ומשפט אחד למה צריך אותה. בסוף בוחרים שעה ודורכים את המנעול. " +
+                "הכול נשאר בטלפון, בלי שרת ובלי חשבון.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Palette.InkSoft,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun PermPage(p: Perm) {
+    Column(Modifier.fillMaxWidth()) {
+        Eyebrow(if (p.required) "חובה בשביל המנעול" else "מומלץ")
+        Spacer(Modifier.height(8.dp))
+        Text(p.title, style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(10.dp))
+        Text(p.why, style = MaterialTheme.typography.bodyLarge, color = Palette.InkSoft)
+        Spacer(Modifier.height(22.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusMark(p.on)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                if (p.on) "דלוק. אפשר להמשיך." else "עוד כבוי. הכפתור למטה פותח את מסך המערכת, וכשחוזרים לכאן זה כבר דלוק.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (p.on) Palette.Success else Palette.Muted,
+            )
+        }
+    }
+}
+
+private val TIME_OPTIONS = listOf(
+    -1 to "מזמן משיכיר",
+    6 * 60 + 30 to "06:30",
+    7 * 60 + 30 to "07:30",
+    8 * 60 + 30 to "08:30",
+    10 * 60 to "10:00",
+)
+
+@Composable
+private fun TimePage(prefs: Prefs) {
+    val context = LocalContext.current
+    val policy = remember { DayPolicy(context) }
+    val misheyakirToday = remember { IsraelTime.hhmm(policy.misheyakir(policy.currentDay())) }
+    var chosen by remember { mutableIntStateOf(prefs.lockStartMinutes) }
+
+    Column(Modifier.fillMaxWidth()) {
+        Eyebrow("שאלה אחת")
+        Spacer(Modifier.height(8.dp))
+        Text("מתי אתה מניח בדרך כלל?", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "בשעה הזאת המנעול נדרך. לפניה הטלפון פתוח, ואימות מוקדם כבר נספר ליום. אפשר לשנות בהגדרות.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Palette.InkSoft,
+        )
+        Spacer(Modifier.height(18.dp))
+        TIME_OPTIONS.forEach { (minutes, label) ->
+            val on = chosen == minutes
+            SoftCard(
+                Modifier.fillMaxWidth(),
+                onClick = {
+                    chosen = minutes
+                    prefs.lockStartMinutes = minutes
+                },
+                gold = on,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(label, style = MaterialTheme.typography.titleMedium)
+                        if (minutes < 0) {
+                            Text("הכי מוקדם שמותר. היום: $misheyakirToday", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                        }
+                    }
+                    RadioDot(on)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        if (TIME_OPTIONS.none { it.first == chosen }) {
+            Text(
+                "כרגע: %02d:%02d, כפי שנבחר בהגדרות.".format(java.util.Locale.US, chosen / 60, chosen % 60),
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.GoldDeep,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArmPage(perms: List<Perm>, required: Boolean) {
+    Column(Modifier.fillMaxWidth()) {
+        Eyebrow("הצעד האחרון")
+        Spacer(Modifier.height(8.dp))
+        Text(if (required) "הכול מוכן." else "כמעט מוכן.", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            if (required) "מהרגע שדורכים, הטלפון נפתח כל בוקר רק אחרי אימות במצלמה. ביום הראשון אפשר לכבות מיד."
+            else "חסרה הרשאת חובה, ובלעדיה המנעול לא יכול לעבוד.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Palette.InkSoft,
+        )
+        Spacer(Modifier.height(18.dp))
+        perms.forEach { p ->
+            Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                StatusMark(p.on)
+                Spacer(Modifier.width(10.dp))
+                Text(p.title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(
+                    if (p.required) "חובה" else "מומלץ",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (p.required && !p.on) Palette.Danger else Palette.Muted,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusMark(on: Boolean) {
+    Box(
+        Modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(if (on) Palette.Gold else Color.Transparent)
+            .border(1.5.dp, if (on) Palette.Gold else Palette.Sand, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (on) Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.ChocolateDeep, modifier = Modifier.size(14.dp))
+    }
+}
+
+@Composable
+private fun RadioDot(on: Boolean) {
+    Box(
+        Modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            .border(1.5.dp, if (on) Palette.Gold else Palette.Sand, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (on) {
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Palette.Gold)
+            )
+        }
+    }
+}
+
+/** The settings view: every switch on one list, as before. */
+@Composable
+private fun PermissionList(
+    perms: List<Perm>,
+    withAdmin: Boolean,
+    required: Boolean,
+    armed: Boolean,
+    firstRun: Boolean,
+    onArm: () -> Unit,
+    onDone: () -> Unit,
+    onBack: () -> Unit,
+) {
     Column(
         Modifier
             .fillMaxSize()
@@ -120,37 +484,7 @@ fun OnboardingScreen(
             )
             Spacer(Modifier.height(18.dp))
 
-            ToggleRow(usageOn, "לראות איזו אפליקציה פתוחה",
-                "בלי זה המנעול עיוור. ברשימה שתיפתח מצא את \"וקשרתם\" והדלק.") {
-                open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            }
-            ToggleRow(overlayOn, "להציג את מסך הנעילה מעל אפליקציות",
-                "כך המסך קופץ מעל מה שפתחת.") {
-                open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
-            }
-            if (withAdmin) {
-                ToggleRow(adminOn, "הגנה מפני מחיקה",
-                    "אנדרואיד לא ייתן למחוק את האפליקציה בלחיצה ארוכה. יש מסך אישור של המערכת.") {
-                    if (activity != null) Guard.requestAdmin(activity) else open(Guard.addAdminIntent(context))
-                }
-            }
-            ToggleRow(cameraOn, "מצלמה", "לאימות החי של הכריכות. בלי גלריה.") {
-                cameraPermission.launch(Manifest.permission.CAMERA)
-            }
-            ToggleRow(notifOn, "התראה שקטה", "מחזיקה את המנעול ער ומראה את המצב בשורת ההתראות.") {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-            ToggleRow(
-                batteryOk, "בלי חיסכון סוללה על האפליקציה",
-                if (Guard.IS_PLAY) "כדי שהשירות לא יירדם באמצע היום. ברשימה שתיפתח בחר \"כל האפליקציות\", מצא את \"וקשרתם\" וכבה את החיסכון."
-                else "כדי שהשירות לא יירדם באמצע היום.",
-            ) {
-                // The direct request needs a permission Google Play restricts; the Play build opens the system list instead.
-                if (Guard.IS_PLAY) open(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                else open(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
-            }
+            perms.forEach { p -> ToggleRow(p.on, p.title, p.why, p.open) }
 
             Spacer(Modifier.height(22.dp))
             if (!armed) {
@@ -162,12 +496,7 @@ fun OnboardingScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                 }
-                GoldButton("דרוך את המנעול", {
-                    prefs.arm()
-                    BlockerService.ensureRunning(context)
-                    onRefresh()
-                    onDone()
-                }, Modifier.fillMaxWidth(), enabled = required)
+                GoldButton("דרוך את המנעול", onArm, Modifier.fillMaxWidth(), enabled = required)
                 if (firstRun) {
                     Spacer(Modifier.height(6.dp))
                     TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {

@@ -134,6 +134,11 @@ class Prefs private constructor(context: Context) {
         get() = sp.getInt(KEY_LOCK_START, -1)
         set(value) = sp.edit().putInt(KEY_LOCK_START, if (value < 0) -1 else value.coerceIn(4 * 60, 16 * 60)).apply()
 
+    /** The largest streak milestone (7, 30, 100, 365) whose card the user already closed. */
+    var milestoneSeen: Int
+        get() = sp.getInt(KEY_MILESTONE, 0)
+        set(value) = sp.edit().putInt(KEY_MILESTONE, value).apply()
+
     companion object {
         @Volatile
         private var instance: Prefs? = null
@@ -164,6 +169,7 @@ class Prefs private constructor(context: Context) {
         private const val KEY_SNOOZE_MAX = "snoozes_per_day"
         private const val KEY_LOCK_START = "lock_start_minutes"
         private const val KEY_EXIT_AT = "exit_requested_at"
+        private const val KEY_MILESTONE = "milestone_seen"
 
         private val PACKAGE_NAME = Regex("^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$")
 
