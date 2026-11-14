@@ -16,8 +16,8 @@ android {
         applicationId = "app.henachti"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.8.4"
+        versionCode = 25
+        versionName = "2.8.5"
     }
 
     // direct = the sideloaded APK (keeps the original id so it updates in place, full uninstall protection).

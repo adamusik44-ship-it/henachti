@@ -1,6 +1,9 @@
 package app.henachti.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -9,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -17,7 +22,9 @@ import app.henachti.ui.Hairline
 import app.henachti.ui.Palette
 import app.henachti.ui.TopBar
 
-/** Privacy, terms and credits. Plain text, nothing to tap. */
+private const val PRIVACY_URL = "https://adamusik44-ship-it.github.io/ukshartem/privacy.html"
+
+/** Privacy, terms and credits, with a link to the full privacy policy on the web (Play asks for it inside the app). */
 @Composable
 fun AboutScreen(version: String, onBack: () -> Unit) {
     Column(
@@ -29,6 +36,17 @@ fun AboutScreen(version: String, onBack: () -> Unit) {
         Column(Modifier.padding(horizontal = 20.dp)) {
 
             Section("פרטיות")
+            val context = LocalContext.current
+            TextButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                },
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("מדיניות הפרטיות המלאה, באתר", style = MaterialTheme.typography.titleSmall, color = Palette.GoldText)
+            }
             Para("האפליקציה לא אוספת, לא שומרת מחוץ לטלפון ולא שולחת שום מידע. אין לה הרשאת אינטרנט, ואין שרת.")
             Para("מצלמה: בזמן האימות הפריימים מנותחים בזיכרון ונמחקים מיד. לא נשמרת תמונה, לא נשלחת תמונה.")
             Para("נתוני שימוש: האפליקציה רואה איזו אפליקציה פתוחה כרגע, רק כדי להפעיל את מסך הנעילה. המידע לא נשמר.")

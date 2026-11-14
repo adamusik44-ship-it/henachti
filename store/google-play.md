@@ -94,26 +94,62 @@
 | Advertising ID | No |
 | Government app / Financial features / Health | No / None / None |
 
-**Foreground service permission** (Special use). להדביק באנגלית:
+**Foreground service permission** (Special use). הטופס שואל ארבעה דברים לכל סוג שירות. להדביק באנגלית:
 
+1. What does the feature do?
 ```
 Ukshartem is a self-imposed app blocker for a daily religious practice (putting on tefillin).
-After the user explicitly turns the lock on ("דרוך את המנעול"), a foreground service checks
-UsageStatsManager about twice a second while the screen is on to see which app is in the
-foreground, and shows the app's own lock screen over blocked apps until the user completes
-the daily camera verification. The check has to run continuously for as long as the lock is
-active, so it cannot be deferred or scheduled, and no other foreground service type describes
-it. The service shows a persistent notification with the current state (locked, snoozed, open),
-and the user can turn the lock off from the app's settings at any time the phone is open.
+After the user explicitly turns the lock on, a foreground service checks UsageStatsManager about
+twice a second while the screen is on to see which app is in the foreground, and shows the app's
+own lock screen over blocked apps until the user completes the daily camera verification.
+The service shows a persistent notification with the current state (locked, snoozed, open).
 All processing is on the device; the app has no internet permission.
 ```
+2. What is the impact on the user if the system defers or interrupts the task?
+```
+The lock stops working: blocked apps open freely and the user loses the commitment they set up
+for themselves. The check must run continuously while the lock is on, so it cannot be scheduled
+or deferred, and no other foreground service type describes it.
+```
+3. Video link: הסרטון למטה, ביוטיוב כ-Unlisted.
+4. Use case: לבחור "Other" ולכתוב:
+```
+Self-imposed app blocker (digital wellbeing) that the user turns on and can turn off in the app.
+```
 
-**הסרטון להצהרה** (30 עד 60 שניות, מקליט המסך של סמסונג, להעלות ליוטיוב כ-Unlisted ולהדביק קישור):
+**הסרטון להצהרה** (30 עד 60 שניות, מקליט המסך של סמסונג). לצלם ביום הראשון אחרי הדריכה, כי אז אפשר לכבות מיד:
 1. פותחים את וקשרתם ומראים את מסך המתגים.
 2. לוחצים "דרוך את המנעול".
 3. מושכים את שורת ההתראות ומראים את ההתראה הקבועה של וקשרתם.
 4. חוזרים למסך הבית ופותחים אפליקציה כלשהי. מסך הנעילה עולה.
 5. לוחצים "הנחתי. אמת במצלמה" ומראים את מסך המצלמה.
+6. **חובה לפי המדיניות:** חוזרים להגדרות של וקשרתם ומכבים את המנעול. מראים שההתראה נעלמה. גוגל דורשת שהמשתמש יוכל לעצור את השירות.
+
+**הערות לבודק** (App content → App access, או Notes for reviewer). להדביק באנגלית:
+```
+Ukshartem is a self-imposed blocker the user turns on for themselves. While it is locked it also
+blocks the Settings app and the Play Store app, so the lock cannot be bypassed in a weak moment.
+It never blocks phone calls, emergency dialing, the home screen, the keyboard or the alarm clock,
+and the system uninstall dialog always stays reachable, so the user can remove the app at any time.
+On the first day the lock can be turned off immediately; after that, from the app's settings with a
+48-hour delay. No account is needed; all features are available right after install.
+```
+
+## בדיקת תאימות (14.11.2026)
+
+הבדיקה האוטומטית רצה על הקובץ הסופי שגוגל מקבל (Actions → Play compliance): 41 בדיקות, 0 נכשלו.
+- API יעד 36, כנדרש מאז 31.8.2026.
+- אין הרשאות מוגבלות: אין אינטרנט, אין מנהל מכשיר, אין פטור סוללה, אין מיקום או אחסון.
+- חתום במפתח ההעלאה. תמיכה בדפים של 16KB (נדרש מ-1.2.2027).
+- נכסי החנות במידות הנכונות. צילומי מסך: 1080 על 1920. צילומים ברוחב 1080 על 2400 **לא מתקבלים** ב-Play, כי היחס מעל 2 ל-1.
+- מדיניות הפרטיות זמינה, מכסה מצלמה ונתוני שימוש, וקישור אליה נמצא באפליקציה (מסך פרטיות ורישיונות).
+- הסבר לפני כל הרשאה רגישה (נתוני שימוש, תצוגה מעל אפליקציות, מצלמה): מה נקרא, למה, ושלא נשמר ולא נשלח.
+- Data safety: לענות "No" על איסוף ועל שיתוף. עיבוד במכשיר בלבד לא נחשב איסוף.
+- הרשאה ACCESS_NETWORK_STATE מגיעה מספרייה (CameraX), ולא מאפשרת גישה לאינטרנט.
+
+## הפצה ישירה של ה-APK (לא דרך Play)
+
+גוגל מתחילה לדרוש אימות מפתחים גם לאפליקציות שמותקנות מחוץ לחנות. בברזיל, אינדונזיה, סינגפור ותאילנד זה בתוקף מ-30.9.2026, ובשאר העולם ב-2027. לישראל עוד אין תאריך. כשיהיה: לרשום ב-Play Console גם את החבילה app.henachti עם מפתח החתימה שלה, אחרת המשתמשים יצטרכו מסלול התקנה מסורבל. ייתכן גם ש-Play Protect יזהיר על הגרסה הישירה, בגלל ההגנה מפני מחיקה.
 
 ## הגרסה ב-Play לעומת הגרסה הישירה
 
