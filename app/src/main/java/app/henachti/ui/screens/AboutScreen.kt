@@ -43,7 +43,7 @@ fun AboutScreen(version: String, onBack: () -> Unit) {
             Section("קרדיטים ורישיונות")
             Para("טקסטי הסידור: סידור מצודה (1981), באדיבות Sefaria, רישיון CC-BY. חלקים מתוך \"תורת אמת\", נחלת הכלל. הנוסח המסורתי עצמו הוא נחלת הכלל.")
             Para("חישוב זמנים ולוח עברי: KosherJava Zmanim, רישיון LGPL 2.1.")
-            Para("גופנים: Frank Ruhl Libre ו-Heebo, רישיון SIL Open Font License 1.1.")
+            Para("גופן: Heebo, רישיון SIL Open Font License 1.1.")
             Para("ספריות: AndroidX, Jetpack Compose, CameraX, Kotlin, רישיון Apache 2.0.")
             Para("קוד האפליקציה: רישיון MIT, פתוח לקריאה ב-GitHub.")
             Spacer(Modifier.height(40.dp))

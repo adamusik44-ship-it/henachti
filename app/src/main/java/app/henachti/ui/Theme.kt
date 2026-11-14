@@ -45,14 +45,7 @@ object Palette {
     val Bronze: Color get() = GoldDeep
 }
 
-/** Frank Ruhl Libre for titles, Heebo for everything else. Both bundled, both variable weight. */
-val Serif = FontFamily(
-    Font(R.font.frank_ruhl_libre, FontWeight.Light),
-    Font(R.font.frank_ruhl_libre, FontWeight.Normal),
-    Font(R.font.frank_ruhl_libre, FontWeight.Medium),
-    Font(R.font.frank_ruhl_libre, FontWeight.Bold),
-    Font(R.font.frank_ruhl_libre, FontWeight.Black),
-)
+/** Heebo, bundled, variable weight: the one face of the whole app, siddur included. */
 
 val Sans = FontFamily(
     Font(R.font.heebo, FontWeight.Light),
@@ -63,7 +56,6 @@ val Sans = FontFamily(
 )
 
 // One family for the whole interface (Heebo), five sizes (40 / 22 / 16 / 14 / 12), three weights.
-// Frank Ruhl Libre stays only as the reading face of the siddur text (prayerTextStyle below).
 private val HenachtiTypography = Typography(
     displayLarge = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 46.sp),
     displayMedium = TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 30.sp),
@@ -80,9 +72,9 @@ private val HenachtiTypography = Typography(
     labelSmall = TextStyle(fontFamily = Sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp),
 )
 
-/** Reading style for prayer text: serif, large, generous leading. */
+/** Reading style for prayer text: the same face as the app, large, with generous leading for the vowel marks. */
 fun prayerTextStyle(sizeSp: Int): TextStyle =
-    TextStyle(fontFamily = Serif, fontWeight = FontWeight.Normal, fontSize = sizeSp.sp, lineHeight = (sizeSp * 1.75f).sp)
+    TextStyle(fontFamily = Sans, fontWeight = FontWeight.Normal, fontSize = sizeSp.sp, lineHeight = (sizeSp * 1.8f).sp)
 
 @Composable
 fun HenachtiTheme(content: @Composable () -> Unit) {

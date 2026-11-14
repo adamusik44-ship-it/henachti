@@ -140,7 +140,7 @@ function lockScreen(s) {
   text("יום רביעי", cx, s.y + 112, f(22, 500), P.GoldDeep);
   darkArch(cx, s.y + 140, 150, 184);
   lock(cx, s.y + 240, 64, 0);
-  let y = para("עוד לא הנחת תפילין היום.", cx, s.y + 400, f(44, 500, SERIF), P.Ink, 470, 54);
+  let y = para("עוד לא הנחת תפילין היום.", cx, s.y + 400, f(44, 500, SANS), P.Ink, 470, 54);
   y = para("הטלפון סגור עד שמראים למצלמה את האמה עם הכריכות.", cx, y + 14, f(24), P.InkSoft, 470, 36);
   // the arc
   const aw = 470, ah = 92, ax = cx - aw / 2, ay = y + 40;
@@ -186,7 +186,7 @@ function arm(bx, by, bw, bh) {
 function verifyScreen(s, verified) {
   const cx = s.x + s.w / 2, r = s.x + s.w - 40;
   text("אימות", r, s.y + 112, f(22, 500), P.GoldDeep, "right");
-  let y = para("הכנס את האמה עם הכריכות למסגרת.", r, s.y + 160, f(36, 500, SERIF), P.Ink, 480, 46, "right");
+  let y = para("הכנס את האמה עם הכריכות למסגרת.", r, s.y + 160, f(36, 500, SANS), P.Ink, 480, 46, "right");
   y = para("כל האמה, מהמרפק עד כף היד, לרוחב המסגרת. האימות קורה לבד.", r, y + 4, f(20), P.InkSoft, 480, 30, "right");
   const bx = s.x + 28, by = y + 22, bw = s.w - 56, bh = s.h - (y + 22 - s.y) - 210;
   x.save(); rr(bx, by, bw, bh, 12); x.clip();
@@ -199,7 +199,7 @@ function verifyScreen(s, verified) {
     x.fillStyle = P.ChocolateDeep; x.fillRect(bx, by, bw, bh);
     darkArch(cx, by + bh / 2 - 250, 170, 208);
     lock(cx, by + bh / 2 - 130, 80, 1);
-    text("הנחת. יום טוב.", cx, by + bh / 2 + 70, f(46, 500, SERIF), P.Cream);
+    text("הנחת. יום טוב.", cx, by + bh / 2 + 70, f(46, 500, SANS), P.Cream);
     text("זוהו 7 כריכות על האמה.", cx, by + bh / 2 + 122, f(24), P.CreamDeep);
   } else {
     rr(gx, gy, gw, gh, 14); x.strokeStyle = P.Cream; x.lineWidth = 4; x.stroke();
@@ -226,7 +226,7 @@ function homeScreen(s) {
   // top bar: time chip on the right (start in RTL), title in the middle, gear on the left
   rr(R - 94, s.y + 74, 94, 46, 14); x.fillStyle = P.CreamDeep; x.fill(); x.strokeStyle = P.Sand; x.lineWidth = 2; x.stroke();
   text("07:24", R - 47, s.y + 105, f(20, 600), P.InkSoft);
-  text("בוקר אור", cx, s.y + 108, f(32, 500, SERIF), P.Ink);
+  text("בוקר אור", cx, s.y + 108, f(32, 500, SANS), P.Ink);
   dot(L + 26, s.y + 97, 23, P.CreamDeep, P.Sand, 2); dot(L + 26, s.y + 97, 8, null, P.Ink, 3);
   text("יום רביעי", cx, s.y + 160, f(19, 500), P.GoldDeep);
   // hero card
@@ -234,7 +234,7 @@ function homeScreen(s) {
   rr(L, hy, R - L, hh, 34); x.fillStyle = P.Cream; x.fill(); x.strokeStyle = P.Gold; x.lineWidth = 2.5; x.stroke();
   darkArch(cx, hy + 26, 116, 144);
   lock(cx, hy + 104, 50, 1);
-  text("הנחת. היום שלך.", cx, hy + 222, f(32, 500, SERIF), P.Ink);
+  text("הנחת. היום שלך.", cx, hy + 222, f(32, 500, SANS), P.Ink);
   text("האימות עבר, והטלפון פתוח עד מחר בבוקר.", cx, hy + 262, f(19), P.InkSoft);
   darkButton(cx, hy + 288, R - L - 44, 62, "אושר להיום");
   // calendar card
@@ -246,7 +246,7 @@ function homeScreen(s) {
   x.moveTo(fx, fy - 18); x.bezierCurveTo(fx + 14, fy - 4, fx + 12, fy + 14, fx, fy + 16);
   x.bezierCurveTo(fx - 12, fy + 14, fx - 14, fy - 2, fx - 4, fy - 8); x.closePath(); x.fill(); x.restore();
   text("הרצף שלך", R - 70, cy0 + 60, f(23, 600), P.Ink, "right");
-  text("23 ימים", L + 24, cy0 + 62, f(30, 500, SERIF), P.GoldDeep, "left");
+  text("23 ימים", L + 24, cy0 + 62, f(30, 500, SANS), P.GoldDeep, "left");
   const letters = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
   const colW = (R - L - 40) / 7;
   const colX = i => R - 20 - colW * (i + 0.5); // Sunday on the right
@@ -289,7 +289,7 @@ function widgetScreen(s) {
   rr(wx, wy, ww, wh, 34); x.fillStyle = P.Chocolate; x.fill(); x.restore();
   rr(wx, wy, ww, wh, 34); x.strokeStyle = P.Gold; x.lineWidth = 2.5; x.stroke();
   text("וּקְשַׁרְתָּם", cx, wy + 62, f(22, 500), P.Gold);
-  text("עוד לא הנחת", cx, wy + 136, f(48, 500, SERIF), P.Cream);
+  text("עוד לא הנחת", cx, wy + 136, f(48, 500, SANS), P.Cream);
   text("נשארו 2 דחיות  ●●○", cx, wy + 190, f(24), P.Sand);
   text("רצף: 23 ימים", cx, wy + 248, f(24, 500), P.GoldSoft);
   // app icons, generic
@@ -327,7 +327,7 @@ function render() {
     archPath(ox + 120, 440, 840, BASE - 440);
     x.fillStyle = P.CreamDeep; x.fill();
     x.strokeStyle = P.Gold; x.lineWidth = 4; x.stroke();
-    text(fr.h, cx, 236, f(84, 500, SERIF), P.Chocolate);
+    text(fr.h, cx, 236, f(84, 500, SANS), P.Chocolate);
     text(fr.sub, cx, 322, f(40), P.InkSoft);
   });
   x.fillStyle = P.Gold; x.fillRect(0, BASE - 2, W * N, 4);

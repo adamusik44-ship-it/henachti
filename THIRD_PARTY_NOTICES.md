@@ -23,8 +23,6 @@ source of this app is public, so the library can be replaced by the user as the 
 
 ## Fonts
 
-- Frank Ruhl Libre — Copyright 2015 The Frank Ruhl Libre Project Authors
-  (https://github.com/fontef/frankruhllibre). **SIL Open Font License 1.1**.
 - Heebo — Copyright 2014 The Heebo Project Authors (https://github.com/OdedEzer/heebo).
   **SIL Open Font License 1.1**.
 
