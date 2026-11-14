@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head><meta charset="utf-8"><title>home mock</title>
+<style>html,body{margin:0;background:#F6F0E6}canvas{display:block}</style></head>
+<body>
+<canvas id="c" width="2720" height="1500"></canvas>
+<script>
+// Preview of the v2.7 Home in four moments of the day (drawn to match HomeScreen.kt / SkyArc.kt).
+const P = { Cream:"#F6F0E6", CreamDeep:"#EEE5D5", Sand:"#E2D7C3", Chocolate:"#2B2219", ChocolateDeep:"#1C1612",
+  Gold:"#C9A75C", GoldSoft:"#E2CC8E", GoldDeep:"#A8863F", Ink:"#2A2420", InkSoft:"#5B5248", Muted:"#8C8172", Success:"#3E8E5E" };
+const PHASE = { NIGHT:["#120E0B","#231B15"], DAWN:["#231B14","#5A422A"], DAY:["#2B2219","#433427"], DUSK:["#1E1611","#6B452A"] };
+const c = document.getElementById("c"), x = c.getContext("2d"); x.direction = "rtl";
+const S = 1.45; // px per dp
+const f = (dp, w = 400, fam = "Heebo") => `${w} ${dp * S}px "${fam}"`;
+function rr(px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
+function T(s, px, py, font, color, align = "center") { x.font = font; x.fillStyle = color; x.textAlign = align; x.fillText(s, px, py); }
+function wrap(s, px, py, font, color, maxW, lh) { x.font = font; const ws = s.split(" "); let cur = "", y = py; for (const w of ws) { const t = cur ? cur + " " + w : w; if (x.measureText(t).width > maxW && cur) { T(cur, px, y, font, color); cur = w; y += lh; } else cur = t; } if (cur) T(cur, px, y, font, color); return y + lh; }
+function dot(px, py, r, fill, stroke, lw = 2) { x.beginPath(); x.arc(px, py, r, 0, 7); if (fill) { x.fillStyle = fill; x.fill(); } if (stroke) { x.strokeStyle = stroke; x.lineWidth = lw; x.stroke(); } }
+function lock(cx, cy, s, open, color) { const l = cx - s / 2, t = cy - s / 2, bt = t + s * .46; x.strokeStyle = color; x.lineWidth = s * .05; x.lineCap = "round"; rr(l + s * .18, bt, s * .64, s * .48, s * .1); x.stroke(); dot(cx, bt + s * .22, s * .06, color); const sw = s * .4, sl = cx - sw / 2, up = open * s * .16, at = t + s * .1 - up; x.beginPath(); x.arc(cx, at + sw / 2, sw / 2, Math.PI, 0); x.stroke(); x.beginPath(); x.moveTo(sl, at + sw / 2); x.lineTo(sl, bt); x.stroke(); x.beginPath(); x.moveTo(sl + sw, at + sw / 2); x.lineTo(sl + sw, bt - up); x.stroke(); }
+function candle(cx, cy, s) { x.fillStyle = P.Gold; rr(cx - s * .12, cy - s * .1, s * .24, s * .55, 3); x.fill(); x.beginPath(); x.moveTo(cx, cy - s * .5); x.bezierCurveTo(cx + s * .16, cy - s * .3, cx + s * .1, cy - s * .16, cx, cy - s * .16); x.bezierCurveTo(cx - s * .1, cy - s * .16, cx - s * .16, cy - s * .3, cx, cy - s * .5); x.fill(); }
+function moon(cx, cy, r) { x.save(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.clip(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.arc(cx + r * .45, cy - r * .3, r * .85, 0, 7, true); x.fillStyle = P.GoldSoft; x.fill("evenodd"); x.restore(); }
+
+function sky(ax, ay, aw, ah, frac, hours) {
+  const sun = 9 * S, cx = ax + aw / 2, cy = ay + ah - 4 * S, rx = aw / 2 - sun * 1.6, ry = ah - sun * 2.6;
+  const at = q => { const a = -Math.PI * q; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; };
+  x.strokeStyle = "rgba(226,204,142,0.35)"; x.lineWidth = 1 * S; x.beginPath(); x.moveTo(ax, cy); x.lineTo(ax + aw, cy); x.stroke();
+  x.save(); x.setLineDash([3 * S, 7 * S]); x.strokeStyle = "rgba(246,240,230,0.26)"; x.lineWidth = 2 * S; x.lineCap = "round"; x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, Math.PI, 0); x.stroke(); x.restore();
+  for (let k = 1; k < hours; k++) { const q = k / hours; const [px, py] = at(q); dot(px, py, 2 * S, q <= frac ? P.GoldSoft : "rgba(246,240,230,0.35)"); }
+  if (frac > 0) { x.strokeStyle = P.Gold; x.lineWidth = 3 * S; x.lineCap = "round"; x.beginPath(); x.ellipse(cx, cy, rx, ry, 0, 0, -Math.PI * frac, true); x.stroke(); }
+  const [px, py] = at(frac);
+  if (frac > 0 && frac < 1) { const g = x.createRadialGradient(px, py, 0, px, py, sun * 3.2); g.addColorStop(0, "rgba(201,167,92,0.38)"); g.addColorStop(1, "rgba(201,167,92,0)"); x.fillStyle = g; x.beginPath(); x.arc(px, py, sun * 3.2, 0, 7); x.fill(); dot(px, py, sun, P.Gold); dot(px, py, sun * .45, P.GoldSoft); }
+  else dot(px, py, sun * .8, null, P.Gold, 2 * S);
+}
+
+function goldBtn(cx, py, w, label) { const h = 56 * S; rr(cx - w / 2, py, w, h, 16 * S); const g = x.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0); g.addColorStop(0, P.GoldSoft); g.addColorStop(.5, P.Gold); g.addColorStop(1, P.GoldDeep); x.fillStyle = g; x.fill(); T(label, cx, py + h / 2 + 6 * S, f(16, 600), P.ChocolateDeep); return py + h; }
+
+function phone(ox, oy, m) {
+  const pw = 600, ph = 1240;
+  x.save(); x.shadowColor = "rgba(28,22,18,0.3)"; x.shadowBlur = 60; x.shadowOffsetY = 26; rr(ox, oy, pw, ph, 70); x.fillStyle = P.ChocolateDeep; x.fill(); x.restore();
+  const sx = ox + 16, sy = oy + 16, sw = pw - 32, sh = ph - 32, cx = sx + sw / 2, pad = 20 * S;
+  x.save(); rr(sx, sy, sw, sh, 56); x.clip(); x.fillStyle = P.Cream; x.fillRect(sx, sy, sw, sh);
+  // panel
+  const panelH = m.panelH * S;
+  const g = x.createLinearGradient(0, sy, 0, sy + panelH); g.addColorStop(0, PHASE[m.phase][0]); g.addColorStop(1, PHASE[m.phase][1]);
+  x.fillStyle = g; rr(sx, sy - 60, sw, panelH + 60, 36 * S); x.fill();
+  T(m.clock, sx + 46, sy + 40, f(13, 600), P.Sand, "left");
+  let y = sy + 24 * S + 10 * S;
+  // top row
+  rr(sx + sw - pad - 56 * S, y + 6 * S, 54 * S, 32 * S, 12 * S); x.fillStyle = "rgba(246,240,230,0.08)"; x.fill(); x.strokeStyle = "rgba(246,240,230,0.16)"; x.lineWidth = 1.5; x.stroke();
+  T(m.clock, sx + sw - pad - 29 * S, y + 28 * S, f(14, 600), P.Sand);
+  dot(sx + pad + 21 * S, y + 22 * S, 21 * S, "rgba(246,240,230,0.08)", "rgba(246,240,230,0.16)", 1.5); dot(sx + pad + 21 * S, y + 22 * S, 6 * S, null, P.Cream, 2.5);
+  T(m.greet, cx, y + 20 * S, f(20, 500, "FRL"), P.Cream); T(m.date, cx, y + 38 * S, f(12, 500), P.GoldSoft);
+  y += 48 * S + 16 * S;
+  const ax = sx + pad, aw = sw - pad * 2, ah = 196 * S;
+  sky(ax, y, aw, ah, m.frac, m.hours);
+  // centrepiece (bottom-centre of the arc box)
+  const by = y + ah - 14 * S;
+  if (m.center === "count") { T(m.big, cx, by - 22 * S, f(54, 500, "FRL"), P.Cream); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
+  else if (m.center === "check") { dot(cx, by - 62 * S, 32 * S, "rgba(201,167,92,0.14)", P.Gold, 2 * S); x.strokeStyle = P.Gold; x.lineWidth = 3.5 * S; x.lineCap = "round"; x.beginPath(); x.moveTo(cx + 12 * S, by - 70 * S); x.lineTo(cx - 2 * S, by - 56 * S); x.lineTo(cx - 12 * S, by - 64 * S); x.stroke(); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
+  else if (m.center === "candle") { candle(cx, by - 46 * S, 46 * S); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
+  else if (m.center === "moon") { moon(cx, by - 48 * S, 18 * S); T(m.cap, cx, by, f(14, 600), P.GoldSoft); }
+  y += ah;
+  T("משיכיר " + m.mish, sx + sw - pad, y + 12 * S, f(12, 500), "rgba(226,215,195,0.75)", "right");
+  T("שקיעה " + m.sunset, sx + pad, y + 12 * S, f(12, 500), "rgba(226,215,195,0.75)", "left");
+  y += 16 * S + 20 * S + 24 * S;
+  T(m.title, cx, y, f(26, 500, "FRL"), P.Cream);
+  y = wrap(m.body, cx, y + 26 * S, f(15), P.Sand, aw, 22 * S);
+  if (m.button) { y = goldBtn(cx, y + 6 * S, aw, m.button); }
+  if (m.dots) {
+    const ry = y + 22 * S; let px = cx + 105 * S;
+    for (let i = 0; i < 3; i++) { dot(px, ry - 4 * S, 4.5 * S, i < m.dots ? P.Gold : null, i < m.dots ? P.Gold : P.Sand, 1.5 * S); px -= 15 * S; }
+    T(m.dots === 1 ? "נשארה דחייה אחת של חצי שעה" : `נשארו ${m.dots} דחיות של חצי שעה`, px - 2 * S, ry, f(12, 500), P.Sand, "right");
+  }
+  // below the panel: streak card
+  let cy0 = sy + panelH + 18 * S; const L = sx + pad, R = sx + sw - pad;
+  rr(L, cy0, R - L, 250 * S, 22 * S); x.fillStyle = P.CreamDeep; x.fill(); x.strokeStyle = P.Sand; x.lineWidth = 1.5; x.stroke();
+  T(String(m.streak), R - 16 * S, cy0 + 56 * S, f(46, 500, "FRL"), P.GoldDeep, "right");
+  x.font = f(46, 500, "FRL"); const nw = x.measureText(String(m.streak)).width;
+  T("ימים ברצף", R - 28 * S - nw, cy0 + 34 * S, f(16, 600), P.Ink, "right");
+  T("שבת וחג לא שוברים את הרצף", R - 28 * S - nw, cy0 + 52 * S, f(12), P.Muted, "right");
+  T(String(m.count), L + 16 * S, cy0 + 34 * S, f(20, 500, "FRL"), P.Ink, "left"); T("אימותים", L + 16 * S, cy0 + 50 * S, f(11, 500), P.Muted, "left");
+  const colW = (R - L - 32 * S) / 7, colX = i => R - 16 * S - colW * (i + .5);
+  ["א", "ב", "ג", "ד", "ה", "ו", "ש"].forEach((l, i) => T(l, colX(i), cy0 + 88 * S, f(11, 500), P.Muted));
+  ["vvmvvvr", "vvvvvvr", "vvvvvvr", m.lastWeek].forEach((wk, w) => [...wk].forEach((k, i) => {
+    const px = colX(i), py = cy0 + 108 * S + w * 22 * S;
+    if (k === "v") dot(px, py, 7 * S, P.Gold); else if (k === "m") dot(px, py, 6.5 * S, null, P.Sand, 1.5 * S);
+    else if (k === "r") dot(px, py, 3 * S, P.Sand); else if (k === "t") dot(px, py, 6.5 * S, null, P.Gold, 2 * S); else dot(px, py, 2 * S, "rgba(226,215,195,.6)");
+  }));
+  x.restore();
+  dot(ox + pw / 2, oy + 40, 8, "#0d0a08");
+  // caption under the phone
+  T(m.label, ox + pw / 2, oy + ph + 80, f(26, 500, "FRL"), P.Chocolate);
+  T(m.sub, ox + pw / 2, oy + ph + 120, f(15), P.InkSoft);
+}
+
+const MOMENTS = [
+  { label: "06:50 · שחר", sub: "נעול, ממתין לאימות", phase: "DAWN", clock: "06:50", greet: "בוקר אור", date: "ו׳ בכסלו תשפ״ז",
+    frac: 0.1, hours: 11, center: "count", big: "9:48", cap: "שעות עד השקיעה", mish: "05:41", sunset: "16:38",
+    title: "התפילין מחכות", body: "הטלפון נפתח אחרי האימות במצלמה.", button: "לאימות במצלמה", dots: 2, panelH: 540,
+    streak: 23, count: 41, lastWeek: "vvvtqqq" },
+  { label: "12:15 · יום", sub: "אחרי אימות", phase: "DAY", clock: "12:15", greet: "צהריים טובים", date: "ו׳ בכסלו תשפ״ז",
+    frac: 0.6, hours: 11, center: "check", cap: "הנחת ב-07:12", mish: "05:41", sunset: "16:38",
+    title: "הנחת. היום שלך.", body: "האימות עבר, והטלפון פתוח עד מחר בבוקר.", panelH: 445,
+    streak: 24, count: 42, lastWeek: "vvvvqqq" },
+  { label: "16:20 · שבת", sub: "שבת וחג: המנעול נח", phase: "DUSK", clock: "16:20", greet: "ערב טוב", date: "ז׳ בכסלו תשפ״ז",
+    frac: 0.95, hours: 11, center: "candle", cap: "שבת שלום", mish: "05:42", sunset: "16:37",
+    title: "שבת שלום", body: "אין הנחת תפילין היום, והמנעול נח.", panelH: 445,
+    streak: 24, count: 42, lastWeek: "vvvvvvr" },
+  { label: "21:30 · לילה", sub: "אחרי השקיעה", phase: "NIGHT", clock: "21:30", greet: "ערב טוב", date: "ח׳ בכסלו תשפ״ז",
+    frac: 1, hours: 11, center: "moon", cap: "מחר מ-05:43", mish: "05:42", sunset: "16:37",
+    title: "השמש שקעה", body: "זמן התפילין של היום עבר. מחר בבוקר מתחילים נקי.", panelH: 445,
+    streak: 24, count: 42, lastWeek: "vvvvvvr" },
+];
+
+async function boot() {
+  for (const [fam, src] of [["FRL", window.__FONTS.frl], ["Heebo", window.__FONTS.heebo]]) { const ff = new FontFace(fam, `url(${src})`); await ff.load(); document.fonts.add(ff); }
+  for (const w of [400, 500, 600]) { await document.fonts.load(`${w} 20px "Heebo"`); await document.fonts.load(`${w} 20px "FRL"`); }
+  x.fillStyle = P.Cream; x.fillRect(0, 0, c.width, c.height);
+  // Hebrew order: the morning on the right
+  MOMENTS.forEach((m, i) => phone(c.width - 40 - (i + 1) * 670 + 30, 40, m));
+  window.__shot = () => c.toDataURL("image/jpeg", 0.9);
+  window.__ready = true;
+}
+boot().catch(e => console.log("BOOT ERR " + e.message));
+</script>
+</body>
+</html>
